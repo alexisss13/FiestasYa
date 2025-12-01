@@ -57,9 +57,15 @@
   - Schema actualizado con Soft Delete (`isAvailable`).
   - Seeding inicial ejecutado.
 
+### 🔗 Integración Frontend-Backend (NUEVO)
+- **Consumo de Configuración:** - `CartPage` ahora obtiene el teléfono y mensaje de bienvenida desde la BD (`StoreConfig`).
+  - `ProductPage` utiliza el teléfono configurado para el botón "Comprar".
+- **Fin del Hardcoding:** Ya no hay números de teléfono quemados en el código.
+
 ## 2. Estructura de Carpetas (Actualizada)
 src/
 ├── actions/
+│   ├── settings.ts         # (NUEVO) Lógica de configuración
 │   ├── auth-actions.ts     # Login Action
 │   ├── products.ts         # CRUD Productos (Soft Delete)
 │   ├── product-form.ts     # Lógica Crear/Editar
@@ -67,8 +73,9 @@ src/
 │   └── order.ts            # Gestión de Pedidos + Zod
 ├── app/
 │   ├── (admin)/            # Grupo Privado
-│   │   ├── layout.tsx      # Sidebar Layout
+│   │   ├── layout.tsx      # Sidebar Layout + Toaster Provider
 │   │   └── admin/
+│   │       ├── settings/   # Página de config
 │   │       ├── dashboard/  # Métricas
 │   │       ├── orders/     # Lista (Tabs) y Detalle
 │   │       └── products/   # Lista y Formulario (New/Edit)
@@ -81,14 +88,14 @@ src/
 │   ├── api/auth/[...]/     # NextAuth Handler
 │   └── ...
 ├── components/
-│   ├── ui/                 # Shadcn (Input, Tabs, Table, etc.)
+│   ├── ui/                 # Shadcn (Input, Tabs, Table, Sonner, etc.)
 │   ├── layout/             # Navbar, Sidebar
 │   └── features/
 │       ├── ProductForm.tsx # Formulario Maestro
 │       ├── OrdersView.tsx  # Vista Cliente con Tabs
 │       └── ...
 ├── lib/
-│   ├── prisma.ts           # Singleton DB
+│   ├── prisma.ts           # Singleton DB + Modelo StoreConfig
 │   └── zud.ts              # Esquemas de validación
 └── ...
 
@@ -102,6 +109,8 @@ src/
 - **Validación:** Zod + React Hook Form
 - **Imágenes:** Cloudinary (Next-Cloudinary Widget)
 - **Arquitectura de Datos:** Soft Delete (Borrado Lógico)
+- **Notificaciones:** Sonner (Toasts).
+- **Configuración:** Persistencia en BD (PostgreSQL).
 
 ## 4. Dependencias Clave
 - next: latest
@@ -112,6 +121,9 @@ src/
 - next-cloudinary: latest
 - react-hook-form: latest
 - lucide-react: latest
+- sonner: latest (NUEVO)
+- next-themes: (Dependencia de Sonner)
 
-## 5. Próximo Paso (Sugerido)
-- **Configuración de Negocio (`/admin/settings`):** - Crear formulario para editar datos de la tienda (Teléfono de WhatsApp, Mensaje de bienvenida, etc.) y guardarlos en una tabla `StoreConfig` para no tenerlos hardcodeados en el código.
+## 5. Próximo Paso
+- **Consumir Configuración:** Actualizar `cart/page.tsx` y `product/[slug]/page.tsx` para que usen el teléfono de la base de datos (`getStoreConfig`) en lugar del hardcodeado.
+- **Buscador (Search):** Implementar la búsqueda real en el Navbar de la tienda.

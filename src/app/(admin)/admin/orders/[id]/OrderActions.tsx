@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { toast } from 'sonner';
 
 interface Props {
   orderId: string;
@@ -34,9 +35,10 @@ export function OrderActions({ orderId, initialStatus, initialIsPaid }: Props) {
     const result = await updateOrderStatus(orderId, status, isPaid);
     
     if (result.success) {
+      toast.success('Orden actualizada correctamente');
       router.refresh(); // Refresca la data de la página
     } else {
-      alert('Error al actualizar');
+      toast.error('No se pudo actualizar la orden');
     }
     setLoading(false);
   };

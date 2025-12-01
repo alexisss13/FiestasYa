@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Menu, Search, ShoppingBag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
 import { useCartStore } from '@/store/cart';
@@ -17,64 +18,128 @@ const routes = [
   { href: '/category/decoracion', label: 'Decoración' },
 ];
 
+// --- COMPONENTE DE BÚSQUEDA REUTILIZABLE ---
+interface SearchInputProps {
+  className?: string;
+  onSearch?: () => void; // 👈 Callback para cerrar el menú
+}
+
+function SearchInput({ className, onSearch }: SearchInputProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [query, setQuery] = useState('');
+
+  useEffect(() => {
+    setQuery(searchParams.get('q') || '');
+  }, [searchParams]);
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // 1. Lógica de Redirección
+    if (query.trim()) {
+      router.push(`/search?q=${encodeURIComponent(query.trim())}`);
+    } else {
+      // Si está vacío y das enter, te manda al Home (Reset)
+      router.push('/');
+    }
+
+    // 2. Ejecutar acción extra (ej: cerrar menú móvil)
+    if (onSearch) {
+      onSearch();
+    }
+  };
+
+  return (
+    <form onSubmit={handleSearch} className={cn("relative", className)}>
+      <Input
+        type="text"
+        placeholder="Buscar productos..."
+        className="h-10 w-full pl-3 pr-10 bg-slate-50 border-slate-200 focus-visible:ring-slate-300"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+      />
+      <button 
+        type="submit" 
+        className="absolute right-0 top-0 h-full px-3 text-slate-400 hover:text-slate-600 transition-colors"
+      >
+        <Search className="h-4 w-4" />
+        <span className="sr-only">Buscar</span>
+      </button>
+    </form>
+  );
+}
+
 export function Navbar() {
   const pathname = usePathname();
-  
-  // 1. Conectamos con el Store
   const totalItems = useCartStore((state) => state.getTotalItems());
-  
-  // 2. Solución al Hydration Mismatch (Con truco para el Linter)
   const [loaded, setLoaded] = useState(false);
+  const [isSheetOpen, setIsSheetOpen] = useState(false); 
   
   useEffect(() => {
-    // Usamos setTimeout para "engañar" al linter y evitar el render síncrono
-    const timer = setTimeout(() => {
-      setLoaded(true);
-    }, 100);
+    const timer = setTimeout(() => setLoaded(true), 100);
     return () => clearTimeout(timer);
   }, []);
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur supports-backdrop-filter:bg-white/60">
+    <header className="sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         
-        {/* MENÚ MÓVIL */}
+        {/* 1. MENÚ MÓVIL (IZQUIERDA) */}
         <div className="md:hidden">
-            <Sheet>
+            <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon" className="mr-2">
                 <Menu className="h-5 w-5" />
                 <span className="sr-only">Abrir menú</span>
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-[300px] sm:w-[400px]">
-              <SheetTitle className="sr-only">Menú de navegación</SheetTitle>
-              <nav className="flex flex-col gap-4 mt-8 px-6">
-                {routes.map((route) => (
-                  <Link
-                    key={route.href}
-                    href={route.href}
-                    className={cn(
-                      "text-lg font-medium transition-colors hover:text-slate-900",
-                      pathname === route.href ? "text-slate-900" : "text-slate-500"
-                    )}
-                  >
-                    {route.label}
-                  </Link>
-                ))}
-              </nav>
+            <SheetContent side="left" className="w-[300px] sm:w-[400px] p-0">
+              <SheetTitle className="sr-only">Menú</SheetTitle>
+              
+              <div className="flex flex-col h-full py-6">
+                <div className="px-6 mb-6">
+                   <span className="text-xl font-bold tracking-tighter text-slate-900">
+                    FiestasYa
+                  </span>
+                </div>
+
+                {/* 🔍 BUSCADOR MÓVIL */}
+                <div className="px-6 mb-6">
+                    <Suspense fallback={<div className="h-10 bg-slate-100 rounded-md" />}>
+                        {/* 👇 AQUÍ ESTÁ LA MAGIA: Pasamos la función para cerrar */}
+                        <SearchInput onSearch={() => setIsSheetOpen(false)} />
+                    </Suspense>
+                </div>
+
+                <nav className="flex flex-col gap-2 px-4">
+                  {routes.map((route) => (
+                    <Link
+                      key={route.href}
+                      href={route.href}
+                      onClick={() => setIsSheetOpen(false)}
+                      className={cn(
+                        "flex items-center rounded-md px-2 py-3 text-lg font-medium transition-colors hover:bg-slate-100",
+                        pathname === route.href ? "text-slate-900 bg-slate-50" : "text-slate-500"
+                      )}
+                    >
+                      {route.label}
+                    </Link>
+                  ))}
+                </nav>
+              </div>
             </SheetContent>
           </Sheet>
         </div>
 
-        {/* LOGO */}
+        {/* 2. LOGO */}
         <Link href="/" className="flex items-center gap-2">
           <span className="text-xl font-bold tracking-tighter text-slate-900">
             FiestasYa
           </span>
         </Link>
 
-        {/* NAVEGACIÓN DESKTOP */}
+        {/* 3. NAVEGACIÓN DESKTOP */}
         <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
           {routes.map((route) => (
             <Link
@@ -90,12 +155,15 @@ export function Navbar() {
           ))}
         </nav>
 
-        {/* ACCIONES */}
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" className="text-slate-500 hover:text-slate-900">
-            <Search className="h-5 w-5" />
-            <span className="sr-only">Buscar</span>
-          </Button>
+        {/* 4. ACCIONES */}
+        <div className="flex items-center gap-4">
+          
+          {/* 🔍 BUSCADOR DESKTOP */}
+          <div className="hidden sm:block w-full max-w-[200px] lg:max-w-[300px]">
+             <Suspense>
+                <SearchInput />
+             </Suspense>
+          </div>
 
           <CartSidebar>
             <Button variant="ghost" size="icon" className="relative text-slate-900 hover:bg-slate-100">

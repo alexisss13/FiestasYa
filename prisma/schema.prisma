@@ -97,3 +97,11 @@ enum Role {
   ADMIN
   USER
 }
+
+model StoreConfig {
+  id             String   @id @default(uuid())
+  whatsappPhone  String   @default("51999999999")
+  welcomeMessage String   @default("Hola FiestasYa, quiero consultar por...")
+  
+  updatedAt      DateTime @updatedAt
+}

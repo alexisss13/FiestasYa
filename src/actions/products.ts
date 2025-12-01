@@ -17,9 +17,27 @@ export type ProductWithCategory = {
   };
 };
 
-export async function getProducts({ includeInactive = false } = {}) {
+// Modificamos la firma de la función para aceptar 'query'
+export async function getProducts({ 
+  includeInactive = false, 
+  query = '' // 👈 Nuevo parámetro opcional
+} = {}) {
   try {
-    const whereClause = includeInactive ? {} : { isAvailable: true };
+    // Construimos el filtro dinámicamente
+    const whereClause: any = {};
+
+    // 1. Filtro de Disponibilidad (Admin vs Public)
+    if (!includeInactive) {
+      whereClause.isAvailable = true;
+    }
+
+    // 2. Filtro de Búsqueda (Texto)
+    if (query) {
+      whereClause.OR = [
+        { title: { contains: query, mode: 'insensitive' } }, // Insensitive = da igual mayúsculas/minúsculas
+        { description: { contains: query, mode: 'insensitive' } },
+      ];
+    }
 
     const products = await prisma.product.findMany({
       where: whereClause,
@@ -31,6 +49,7 @@ export async function getProducts({ includeInactive = false } = {}) {
       },
     });
 
+    // ... (El resto del mapeo 'cleanProducts' se queda EXACTAMENTE IGUAL)
     const cleanProducts: ProductWithCategory[] = products.map((product) => ({
       id: product.id,
       title: product.title,

@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { productSchema } from '@/lib/zod';
 import { createOrUpdateProduct } from '@/actions/product-form';
 import ImageUpload from '@/components/ui/image-upload';
+import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -76,10 +77,11 @@ export function ProductForm({ initialData, categories }: ProductFormProps) {
     const result = await createOrUpdateProduct(data, initialData?.id || null);
     
     if (result.success) {
+      toast.success(initialData ? 'Producto actualizado correctamente' : 'Producto creado exitosamente');
       router.push('/admin/products');
       router.refresh();
     } else {
-      alert(result.message);
+      toast.error(result.message || 'Ocurrió un error inesperado');
     }
     setLoading(false);
   };

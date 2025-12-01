@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useCartStore } from '@/store/cart';
 import { createOrder } from '@/actions/order';
+import { getStoreConfig } from '@/actions/settings';
 
 export default function CartPage() {
   const { items, removeItem, updateQuantity, getTotalPrice, clearCart } = useCartStore();
@@ -20,14 +21,29 @@ export default function CartPage() {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
-  // NUEVO: Estado para errores de validación
   const [errors, setErrors] = useState<{ name?: string[], phone?: string[] }>({});
+
+  // 2. Estado para la configuración de la tienda
+  const [storeConfig, setStoreConfig] = useState({
+    whatsappPhone: '51999999999', // Fallback por si acaso
+    welcomeMessage: 'Hola, quiero confirmar mi pedido.'
+  });
 
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsMounted(true);
     }, 100);
+
+    // 3. Traemos la configuración real al cargar
+    getStoreConfig().then((config) => {
+      if (config) {
+        setStoreConfig({
+          whatsappPhone: config.whatsappPhone,
+          welcomeMessage: config.welcomeMessage
+        });
+      }
+    });
+
     return () => clearTimeout(timer);
   }, []);
 
@@ -38,8 +54,7 @@ export default function CartPage() {
     }).format(value);
 
   const handleCheckout = async () => {
-    setErrors({}); // Limpiamos errores previos
-
+    setErrors({});
     setIsSubmitting(true);
 
     const result = await createOrder({
@@ -53,38 +68,39 @@ export default function CartPage() {
       })),
     });
 
-    // MANEJO DE ERRORES MEJORADO
     if (!result.success) {
       setIsSubmitting(false);
-      
-      // Si el error es de validación (Zod), lo guardamos en el estado
       if (result.errors) {
         setErrors(result.errors);
         return;
       }
-
-      // Si es otro error (Base de datos caída, etc)
       alert(result.message || 'Error desconocido');
       return;
     }
 
     // ÉXITO
-    const phoneNumber = '960633393'; // ⚠️ TU NÚMERO
     const shortId = result.orderId!.split('-')[0].toUpperCase();
 
-    let message = `Hola FiestasYa. Acabo de generar el pedido *#${shortId}* en la web.\n`;
-    message += `Soy *${name}*.\n\n`;
-    message += `Detalle del pedido:\n`;
+    // 4. USAMOS LA CONFIGURACIÓN REAL AQUI
+    // Combinamos el mensaje configurado con los detalles técnicos del pedido
+    let message = `${storeConfig.welcomeMessage}\n\n`; 
+    message += `--------------------------------\n`;
+    message += `*Pedido:* #${shortId}\n`;
+    message += `*Cliente:* ${name}\n`;
+    message += `--------------------------------\n\n`;
+    message += `*Detalle:*\n`;
     
     items.forEach((item) => {
       message += `• ${item.quantity}x ${item.title}\n`;
     });
     
-    message += `\n*Total a pagar: ${formatPrice(getTotalPrice())}*`;
-    message += `\n\nQuedo atento para coordinar el pago y envío.`;
+    message += `\n*TOTAL: ${formatPrice(getTotalPrice())}*`;
+    message += `\n\nQuedo atento a los datos de pago.`;
 
     clearCart();
-    const url = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
+    
+    // Usamos el teléfono configurado
+    const url = `https://wa.me/${storeConfig.whatsappPhone}?text=${encodeURIComponent(message)}`;
     
     setTimeout(() => {
         window.open(url, '_blank');
@@ -97,7 +113,6 @@ export default function CartPage() {
   if (items.length === 0) {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 text-center px-4">
-        {/* ... (Lo mismo de antes) ... */}
         <div className="flex h-20 w-20 items-center justify-center rounded-full bg-slate-100">
           <ShoppingBag className="h-10 w-10 text-slate-400" />
         </div>
@@ -115,12 +130,12 @@ export default function CartPage() {
       <h1 className="mb-8 text-3xl font-bold text-slate-900">Carrito de Compras</h1>
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
-        {/* COLUMNA IZQUIERDA (Items) - IGUAL QUE ANTES */}
+        {/* COLUMNA IZQUIERDA (Items) - Sin cambios */}
         <div className="lg:col-span-7 space-y-4">
           {items.map((item) => (
              <Card key={item.id} className="overflow-hidden border-slate-200">
                <CardContent className="flex gap-4 p-4">
-                 <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-md border bg-slate-100">
+                 <div className="relative h-24 w-24 flex-shrink-0 overflow-hidden rounded-md border bg-slate-100">
                    <Image src={item.image} alt={item.title} fill className="object-cover" />
                  </div>
                  <div className="flex flex-1 flex-col justify-between">
@@ -149,14 +164,13 @@ export default function CartPage() {
           ))}
         </div>
 
-        {/* COLUMNA DERECHA (Formulario Actualizado) */}
+        {/* COLUMNA DERECHA (Formulario) - Sin cambios estructurales, solo usa state nuevo */}
         <div className="lg:col-span-5">
           <Card className="bg-slate-50 border-slate-200 sticky top-24">
             <CardContent className="p-6">
               <h2 className="text-xl font-semibold text-slate-900 mb-4">Datos de Contacto</h2>
               
               <div className="space-y-4 mb-6">
-                
                 {/* INPUT NOMBRE */}
                 <div className="grid w-full items-center gap-1.5">
                   <Label htmlFor="name" className={errors.name ? "text-red-500" : ""}>
@@ -168,16 +182,11 @@ export default function CartPage() {
                     value={name}
                     onChange={(e) => {
                       setName(e.target.value);
-                      // Si hay un error en 'name', lo borramos al escribir
-                      if (errors.name) {
-                        setErrors({ ...errors, name: undefined });
-                      }
+                      if (errors.name) setErrors({ ...errors, name: undefined });
                     }}
                     className={errors.name ? "border-red-500 bg-red-50 focus-visible:ring-red-500" : "bg-white"}
                   />
-                  {errors.name && (
-                    <p className="text-sm text-red-500 animate-pulse">{errors.name[0]}</p>
-                  )}
+                  {errors.name && <p className="text-sm text-red-500 animate-pulse">{errors.name[0]}</p>}
                 </div>
 
                 {/* INPUT CELULAR */}
@@ -191,19 +200,13 @@ export default function CartPage() {
                     value={phone}
                     onChange={(e) => {
                       setPhone(e.target.value);
-                      // Si hay un error en 'phone', lo borramos al escribir
-                      if (errors.phone) {
-                        setErrors({ ...errors, phone: undefined });
-                      }
+                      if (errors.phone) setErrors({ ...errors, phone: undefined });
                     }}
                     maxLength={9}
                     className={errors.phone ? "border-red-500 bg-red-50 focus-visible:ring-red-500" : "bg-white"}
                   />
-                  {errors.phone && (
-                    <p className="text-sm text-red-500 animate-pulse">{errors.phone[0]}</p>
-                  )}
+                  {errors.phone && <p className="text-sm text-red-500 animate-pulse">{errors.phone[0]}</p>}
                 </div>
-
               </div>
 
               <Separator className="my-4" />

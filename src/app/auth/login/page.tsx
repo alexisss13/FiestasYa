@@ -12,7 +12,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (errorMessage === 'success') {
-      window.location.href = '/admin/orders';
+      window.location.href = '/admin/dashboard';
     }
   }, [errorMessage]);
 
