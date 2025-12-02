@@ -68,6 +68,16 @@ export async function Footer() {
                   Política de Privacidad
                 </Link>
               </li>
+              <li>
+                  <a 
+                    href="https://docs.google.com/forms/d/e/1FAIpQLSeRwJVEuZlu14QhTtBkNIVToNBP7oUcgUJhf2tEvaAI5DR9rg/viewform" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="hover:text-slate-900 cursor-pointer"
+                  >
+                    Solicitar Devolución
+                  </a>
+              </li>
               <li className="pt-2">
                 <Link href="/admin/dashboard" className="text-slate-400 hover:text-slate-900 text-xs">
                   Acceso Administrativo

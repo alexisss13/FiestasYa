@@ -23,6 +23,7 @@ const orderSchema = z.object({
   deliveryMethod: z.string().optional(),
   shippingAddress: z.string().optional(),
   shippingCost: z.number().optional(),
+  notes: z.string().optional(),
 });
 
 interface CreateOrderInput {
@@ -34,6 +35,7 @@ interface CreateOrderInput {
   deliveryMethod?: string;
   shippingAddress?: string;
   shippingCost?: number;
+  notes?: string;
 }
 
 export async function createOrder(data: CreateOrderInput) {
@@ -79,6 +81,7 @@ export async function createOrder(data: CreateOrderInput) {
           deliveryMethod: data.deliveryMethod || 'PICKUP',
           shippingAddress: data.shippingAddress || '',
           shippingCost: data.shippingCost || 0,
+          notes: data.notes || '',
           orderItems: {
             create: data.items.map((item) => ({
               productId: item.productId,

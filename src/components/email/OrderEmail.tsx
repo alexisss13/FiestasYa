@@ -24,6 +24,7 @@ interface OrderEmailProps {
   deliveryMethod: string;
   shippingAddress?: string;
   shippingCost: number;
+  notes?: string;
 }
 
 export const OrderEmail: React.FC<Readonly<OrderEmailProps>> = ({
@@ -36,6 +37,7 @@ export const OrderEmail: React.FC<Readonly<OrderEmailProps>> = ({
   deliveryMethod,
   shippingAddress,
   shippingCost,
+  notes,
 }) => {
   
   const getDeliveryLabel = (method: string) => {
@@ -80,6 +82,22 @@ export const OrderEmail: React.FC<Readonly<OrderEmailProps>> = ({
                 )}
               </Column>
             </Row>
+
+            <Hr style={hr} />
+
+            {notes && (
+              <>
+                <Hr style={hr} />
+                <Row>
+                  <Column>
+                    <Text style={paragraph}><strong>📝 Notas del Cliente:</strong></Text>
+                    <Text style={{...paragraph, fontStyle: 'italic', backgroundColor: '#fff', padding: '10px', borderRadius: '4px', border: '1px dashed #cbd5e1'}}>
+                      {notes}
+                    </Text>
+                  </Column>
+                </Row>
+              </>
+            )}
 
             <Hr style={hr} />
 

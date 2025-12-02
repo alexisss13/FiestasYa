@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Trash2, Plus, Minus, ArrowRight, ShoppingBag, Loader2, Tag, MapPin, Truck, Store } from 'lucide-react';
+import { Trash2, Plus, Minus, ArrowRight, ShoppingBag, Loader2, Tag, MapPin, Truck, Store, MessageSquarePlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -31,6 +31,8 @@ export default function CartPage() {
   // Estados de Envío
   const [deliveryMethod, setDeliveryMethod] = useState('PICKUP'); 
   const [address, setAddress] = useState('');
+  const [notes, setNotes] = useState('');
+
 
   const [storeConfig, setStoreConfig] = useState({
     whatsappPhone: '51999999999',
@@ -115,7 +117,8 @@ export default function CartPage() {
       })),
       deliveryMethod, 
       shippingAddress: address,
-      shippingCost: getShippingCost() 
+      shippingCost: getShippingCost(),
+      notes: notes 
     });
 
     if (!result.success) {
@@ -135,6 +138,12 @@ export default function CartPage() {
     if (deliveryMethod === 'PROVINCE') deliveryText = "Envío a Provincia (Agencia)";
     
     message += `*Entrega:* ${deliveryText}\n`;
+    message += `--------------------------------\n`;
+
+    if (notes.trim()) {
+        message += `*Notas:* ${notes}\n`;
+    }
+
     message += `--------------------------------\n`;
     
     items.forEach((item) => {
@@ -165,6 +174,7 @@ export default function CartPage() {
         setName('');
         setPhone('');
         setAddress('');
+        setNotes('');
         setDeliveryMethod('PICKUP');
         setIsSubmitting(false);
     }, 1000);
@@ -186,7 +196,6 @@ export default function CartPage() {
       </div>
     );
   }
-
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="mb-8 text-3xl font-bold text-slate-900">Carrito de Compras</h1>
@@ -317,6 +326,18 @@ export default function CartPage() {
                         {errors.address && <p className="text-sm text-red-500 mt-1">{errors.address[0]}</p>}
                     </div>
                 )}
+                <div className="pt-2">
+                    <Label htmlFor="notes" className="flex items-center gap-2 mb-2">
+                        <MessageSquarePlus className="h-4 w-4" /> Notas del Pedido (Opcional)
+                    </Label>
+                    <Textarea 
+                        id="notes"
+                        placeholder="Ej: Quiero el globo número 5 en color azul. Dedicatoria: Feliz Cumpleaños..."
+                        className="bg-white resize-none h-24"
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                    />
+                </div>
 
               </div>
 
@@ -379,7 +400,16 @@ export default function CartPage() {
                   <span className="text-base font-medium text-slate-900">Total a Pagar</span>
                   <span className="text-2xl font-bold text-slate-900">{formatPrice(getGrandTotal())}</span>
               </div>
-
+              <div className="mb-4">
+                <Label htmlFor="notes" className="mb-2 block text-slate-600">Notas o Personalización (Opcional)</Label>
+                <Textarea 
+                  id="notes"
+                  placeholder="Ej: El globo de número que sea un '5'. Nombre: 'Valentina'."
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  className="bg-white resize-none"
+                />
+              </div>
               <Button 
                 size="lg" 
                 className="w-full bg-green-600 hover:bg-green-700 text-lg shadow-md shadow-green-900/10 transition-all hover:scale-[1.01]"

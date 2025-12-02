@@ -57,6 +57,8 @@ model Order {
   deliveryMethod  String   @default("PICKUP") // 'PICKUP' | 'DELIVERY' | 'PROVINCE'
   shippingAddress String?  // Opcional porque en Recojo no hay dirección
   shippingCost    Decimal  @default(0) @db.Decimal(10, 2)
+
+  notes           String?     // Opcional, puede ser nulo
   
   orderItems    OrderItem[]
 

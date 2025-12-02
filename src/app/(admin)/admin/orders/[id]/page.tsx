@@ -6,7 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { OrderActions } from './OrderActions';
-import { MapPin, Store, Truck } from 'lucide-react';
+import { MapPin, Store, Truck, MessageSquarePlus } from 'lucide-react';
+
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -183,6 +184,22 @@ export default async function OrderDetailPage({ params }: Props) {
               </div>
             </CardContent>
           </Card>
+
+        {/* TARJETA DE NOTAS */}
+          {order.notes && (
+            <Card className="bg-yellow-50 border-yellow-200">
+                <CardHeader>
+                    <CardTitle className="text-yellow-800 flex items-center gap-2">
+                        <MessageSquarePlus className="h-5 w-5" /> Notas del Cliente
+                    </CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <p className="text-sm text-yellow-900 italic">
+                        &ldquo;{order.notes}&rdquo;
+                    </p>
+                </CardContent>
+            </Card>
+          )}
         </div>
 
       </div>
