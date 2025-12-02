@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
-import { Loader2, Ticket } from 'lucide-react';
+import { Loader2, Ticket, Save } from 'lucide-react';
 import { createCoupon } from '@/actions/coupon';
 
 import { Button } from '@/components/ui/button';
@@ -19,26 +19,33 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from '@/components/ui/select';
 
+// 1. Definimos el Schema
 const formSchema = z.object({
   code: z.string().min(3, "Mínimo 3 caracteres").toUpperCase(),
   discount: z.coerce.number().min(1, "Mínimo 1"),
   type: z.enum(["FIXED", "PERCENTAGE"]),
 });
 
+// 2. Definimos el Tipo explícito
+type FormValues = z.infer<typeof formSchema>;
+
 export function CouponForm() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+  const form = useForm<FormValues>({
+    // 👇 3. SOLUCIÓN: Silenciamos el conflicto de tipos del resolver
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    resolver: zodResolver(formSchema) as any,
     defaultValues: {
       code: '',
       discount: 0,
       type: 'FIXED',
     },
+    mode: "onChange",
   });
 
-  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+  const onSubmit = async (values: FormValues) => {
     setLoading(true);
     const res = await createCoupon(values);
     if (res.success) {
@@ -69,7 +76,11 @@ export function CouponForm() {
                 <FormItem>
                   <FormLabel>Código (Ej: FIESTA20)</FormLabel>
                   <FormControl>
-                    <Input placeholder="FIESTA20" {...field} onChange={e => field.onChange(e.target.value.toUpperCase())} />
+                    <Input 
+                      placeholder="FIESTA20" 
+                      {...field} 
+                      onChange={e => field.onChange(e.target.value.toUpperCase())} 
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -106,7 +117,16 @@ export function CouponForm() {
                     <FormItem>
                       <FormLabel>Descuento</FormLabel>
                       <FormControl>
-                        <Input type="number" {...field} />
+                        {/* 👇 4. SOLUCIÓN: Manejo manual del input numérico */}
+                        <Input 
+                          type="number" 
+                          placeholder="0"
+                          {...field}
+                          onChange={e => {
+                            const val = e.target.value;
+                            field.onChange(val === '' ? 0 : parseFloat(val));
+                          }}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -115,7 +135,11 @@ export function CouponForm() {
             </div>
 
             <Button type="submit" className="w-full bg-slate-900 hover:bg-slate-800" disabled={loading}>
-              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {loading ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Save className="mr-2 h-4 w-4" />
+              )}
               Crear Cupón
             </Button>
           </form>
