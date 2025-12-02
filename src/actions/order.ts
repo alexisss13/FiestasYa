@@ -161,19 +161,77 @@ export async function getOrderById(id: string) {
 }
 
 // Actualizar Estado y Pago (Admin)
-export async function updateOrderStatus(id: string, status: OrderStatus, isPaid: boolean) {
+export async function updateOrderStatus(id: string, newStatus: OrderStatus, isPaid: boolean) {
   try {
-    await prisma.order.update({
+    const currentOrder = await prisma.order.findUnique({
       where: { id },
-      data: {
-        status,
-        isPaid,
-      },
+      include: { orderItems: { include: { product: true } } }, // Necesitamos el producto para ver el stock actual
     });
+
+    if (!currentOrder) return { success: false, message: 'Orden no encontrada' };
+
+    // 1. CASO: CANCELAR (Devolver Stock)
+    // Si estaba activa y la cancelamos -> Sumamos stock
+    if (newStatus === 'CANCELLED' && currentOrder.status !== 'CANCELLED') {
+      await prisma.$transaction(async (tx) => {
+        for (const item of currentOrder.orderItems) {
+          await tx.product.update({
+            where: { id: item.productId },
+            data: { stock: { increment: item.quantity } },
+          });
+        }
+        await tx.order.update({
+          where: { id },
+          data: { status: newStatus, isPaid },
+        });
+      });
+    }
+    
+    // 2. CASO: REACTIVAR (Volver a restar Stock)
+    // Si estaba cancelada y la pasamos a Pendiente/Pagado -> Restamos stock
+    else if (currentOrder.status === 'CANCELLED' && newStatus !== 'CANCELLED') {
+      
+      // ⚠️ PRIMERO: Verificar si AÚN hay stock disponible
+      for (const item of currentOrder.orderItems) {
+        // Consultamos el stock fresco de la BD
+        const currentProduct = await prisma.product.findUnique({ where: { id: item.productId } });
+        
+        if (!currentProduct || currentProduct.stock < item.quantity) {
+          return { 
+            success: false, 
+            message: `No se puede reactivar: No hay suficiente stock de "${item.product.title}".` 
+          };
+        }
+      }
+
+      // Si hay stock, procedemos a restar y cambiar estado
+      await prisma.$transaction(async (tx) => {
+        for (const item of currentOrder.orderItems) {
+          await tx.product.update({
+            where: { id: item.productId },
+            data: { stock: { decrement: item.quantity } },
+          });
+        }
+        await tx.order.update({
+          where: { id },
+          data: { status: newStatus, isPaid },
+        });
+      });
+    } 
+    
+    // 3. CAMBIO NORMAL (Ej: Pendiente -> Entregado)
+    // No toca inventario
+    else {
+      await prisma.order.update({
+        where: { id },
+        data: { status: newStatus, isPaid },
+      });
+    }
 
     revalidatePath(`/admin/orders/${id}`);
     revalidatePath('/admin/orders');
     revalidatePath('/admin/dashboard');
+    revalidatePath('/admin/products');
 
     return { success: true };
   } catch (error) {
