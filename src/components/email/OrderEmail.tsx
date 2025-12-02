@@ -55,7 +55,7 @@ export const OrderEmail: React.FC<Readonly<OrderEmailProps>> = ({
       <Preview>Nuevo pedido #{formattedOrderId} de {customerName}</Preview>
       <Body style={main}>
         <Container style={container}>
-          <Heading style={h1}>¡Nuevo Pedido Recibido! 🎉</Heading>
+          <Heading style={h1}>¡Nuevo Pedido! 🎉</Heading>
           <Text style={text}>Hola Admin, tienes una nueva venta en FiestasYa.</Text>
           
           <Section style={card}>
@@ -84,11 +84,11 @@ export const OrderEmail: React.FC<Readonly<OrderEmailProps>> = ({
             <Hr style={hr} />
 
             <Text style={total}>
-              Total a Cobrar: S/ {totalAmount.toFixed(2)}
+              Total: S/ {totalAmount.toFixed(2)}
             </Text>
           </Section>
 
-          <Section>
+          <Section style={{ padding: '0 24px' }}>
             <Text style={h2}>Detalle de productos:</Text>
             {items.map((item, index) => (
               <Text key={index} style={itemText}>
@@ -98,14 +98,13 @@ export const OrderEmail: React.FC<Readonly<OrderEmailProps>> = ({
           </Section>
 
           <Section style={btnContainer}>
-            {/* 👇 ESTE COMPONENTE BUTTON ES CLAVE PARA QUE FUNCIONE EN GMAIL */}
             <Button style={button} href={url}>
               Ver en el Panel Admin
             </Button>
           </Section>
           
           <Text style={footer}>
-            Este es un correo automático del sistema FiestasYa.
+            Sistema FiestasYa - Notificación Automática
           </Text>
         </Container>
       </Body>
@@ -113,10 +112,10 @@ export const OrderEmail: React.FC<Readonly<OrderEmailProps>> = ({
   );
 };
 
-// --- ESTILOS INLINE (Necesarios para emails) ---
+// --- ESTILOS OPTIMIZADOS ---
 const main = {
   backgroundColor: '#f6f9fc',
-  fontFamily: '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Ubuntu,sans-serif',
+  fontFamily: '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif',
 };
 
 const container = {
@@ -124,90 +123,91 @@ const container = {
   margin: '0 auto',
   padding: '20px 0 48px',
   marginBottom: '64px',
+  maxWidth: '600px', // Limitamos el ancho para que no se estire feo
+  borderRadius: '8px',
+  boxShadow: '0 4px 6px rgba(0,0,0,0.05)' // Sombrita sutil
 };
 
 const h1 = {
   color: '#0f172a',
   fontSize: '24px',
-  fontWeight: '600',
-  lineHeight: '1.25',
-  padding: '0 48px',
-};
-
-const h2 = {
-  color: '#334155',
-  fontSize: '18px',
-  fontWeight: '600',
-  padding: '0 48px',
-  marginTop: '24px',
+  fontWeight: '700',
+  textAlign: 'center' as const,
+  margin: '30px 0',
+  padding: '0',
 };
 
 const text = {
   color: '#525f7f',
   fontSize: '16px',
-  lineHeight: '24px',
-  textAlign: 'left' as const,
-  padding: '0 48px',
+  textAlign: 'center' as const,
+  marginBottom: '20px',
 };
 
 const paragraph = {
   color: '#525f7f',
   fontSize: '15px',
-  lineHeight: '20px',
-  margin: '8px 0',
+  lineHeight: '24px',
+  margin: '0', // Quitamos márgenes verticales excesivos
+};
+
+const h2 = {
+  color: '#334155',
+  fontSize: '16px',
+  fontWeight: '600',
+  marginTop: '20px',
+  marginBottom: '10px',
 };
 
 const itemText = {
   color: '#334155',
   fontSize: '14px',
   margin: '4px 0',
-  padding: '0 48px',
 };
 
 const card = {
   padding: '24px',
   border: '1px solid #e2e8f0',
-  borderRadius: '8px',
+  borderRadius: '12px',
   backgroundColor: '#f8fafc',
-  margin: '24px 48px',
+  margin: '0 24px', // Margen lateral seguro
+  width: 'calc(100% - 48px)', // Asegura que respete el margen
 };
 
 const hr = {
   borderColor: '#e6ebf1',
-  margin: '20px 0',
+  margin: '16px 0',
 };
 
 const total = {
-  fontSize: '20px',
+  fontSize: '18px',
   fontWeight: 'bold',
   color: '#16a34a',
   margin: '0',
+  textAlign: 'right' as const,
 };
 
 const btnContainer = {
   textAlign: 'center' as const,
   marginTop: '32px',
+  marginBottom: '32px',
 };
 
 const button = {
   backgroundColor: '#0f172a',
-  borderRadius: '5px',
+  borderRadius: '6px',
   color: '#fff',
   fontSize: '16px',
-  fontWeight: 'bold',
+  fontWeight: '600',
   textDecoration: 'none',
   textAlign: 'center' as const,
-  display: 'block',
-  width: '100%',
-  padding: '12px 0', // Padding vertical, el ancho es 100%
-  maxWidth: '250px',
-  margin: '0 auto',
+  display: 'inline-block',
+  padding: '12px 32px',
 };
 
 const footer = {
   color: '#8898aa',
   fontSize: '12px',
-  lineHeight: '16px',
   textAlign: 'center' as const,
-  marginTop: '32px',
+  marginTop: '10px',
 };

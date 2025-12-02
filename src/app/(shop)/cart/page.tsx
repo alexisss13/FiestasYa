@@ -29,10 +29,9 @@ export default function CartPage() {
   const [errors, setErrors] = useState<{ name?: string[], phone?: string[], address?: string[] }>({});
 
   // Estados de Envío
-  const [deliveryMethod, setDeliveryMethod] = useState('PICKUP'); // PICKUP | DELIVERY | PROVINCE
+  const [deliveryMethod, setDeliveryMethod] = useState('PICKUP'); 
   const [address, setAddress] = useState('');
 
-  // Configuración de la tienda (Cargada desde BD)
   const [storeConfig, setStoreConfig] = useState({
     whatsappPhone: '51999999999',
     welcomeMessage: 'Hola, quiero confirmar mi pedido.',
@@ -57,13 +56,20 @@ export default function CartPage() {
     return () => clearTimeout(timer);
   }, []);
 
+  // 🛡️ FIX: Usamos setTimeout para evitar el error "setState synchronously"
+  useEffect(() => {
+      if (!coupon) {
+          const timer = setTimeout(() => setCouponCode(''), 0);
+          return () => clearTimeout(timer);
+      }
+  }, [coupon]);
+
   const handleApplyCoupon = async () => {
       if (!couponCode) return;
       const res = await validateCoupon(couponCode);
       if (res.success && res.coupon) {
           applyCoupon(res.coupon);
           toast.success('Cupón aplicado');
-          setCouponCode('');
       } else {
           toast.error(res.message);
       }
@@ -75,13 +81,11 @@ export default function CartPage() {
       currency: 'PEN',
     }).format(value);
 
-  // Cálculo del costo de envío dinámico
   const getShippingCost = () => {
     if (deliveryMethod === 'DELIVERY') return storeConfig.localDeliveryPrice;
-    return 0; // PICKUP y PROVINCE (Por pagar) son 0 en la web
+    return 0; 
   };
 
-  // Precio finalísimo (Productos - Descuento + Envío)
   const getGrandTotal = () => {
     return getFinalPrice() + getShippingCost();
   };
@@ -100,7 +104,6 @@ export default function CartPage() {
 
     setIsSubmitting(true);
 
-    // 👇 AQUÍ ESTABA EL ERROR: Faltaba enviar los datos de envío al backend
     const result = await createOrder({
       name,
       phone,
@@ -110,7 +113,6 @@ export default function CartPage() {
         quantity: item.quantity,
         price: item.price,
       })),
-      // Agregamos estos 3 campos para que se guarden en la BD
       deliveryMethod, 
       shippingAddress: address,
       shippingCost: getShippingCost() 
@@ -124,12 +126,10 @@ export default function CartPage() {
 
     const shortId = result.orderId!.split('-')[0].toUpperCase();
 
-    // CONSTRUCCIÓN DEL MENSAJE DE WHATSAPP
     let message = `${storeConfig.welcomeMessage}\n\n`; 
     message += `*Pedido:* #${shortId}\n`;
     message += `*Cliente:* ${name}\n`;
     
-    // Método de entrega en el mensaje
     let deliveryText = "Recojo en Tienda";
     if (deliveryMethod === 'DELIVERY') deliveryText = `Delivery Local (${address})`;
     if (deliveryMethod === 'PROVINCE') deliveryText = "Envío a Provincia (Agencia)";
@@ -153,15 +153,21 @@ export default function CartPage() {
     message += `\n*TOTAL A PAGAR: ${formatPrice(getGrandTotal())}*`;
     message += `\n\nQuedo atento a los datos de pago.`;
 
-    clearCart();      // Limpia items y cupón aplicado del store
-    setCouponCode(''); // Limpia el texto del input
-    
+    // Limpieza final
     const url = `https://wa.me/${storeConfig.whatsappPhone}?text=${encodeURIComponent(message)}`;
-    
+    window.open(url, '_blank');
+
     setTimeout(() => {
-        window.open(url, '_blank');
+        clearCart();
+        removeCoupon(); // Aseguramos limpieza del store
+        // setCouponCode('') se ejecutará automáticamente gracias al useEffect corregido
+        
+        setName('');
+        setPhone('');
+        setAddress('');
+        setDeliveryMethod('PICKUP');
         setIsSubmitting(false);
-    }, 500);
+    }, 1000);
   };
 
   if (!isMounted) return <div className="min-h-[60vh] flex items-center justify-center text-slate-500">Cargando...</div>;
@@ -256,10 +262,9 @@ export default function CartPage() {
                   {errors.phone && <p className="text-sm text-red-500">{errors.phone[0]}</p>}
                 </div>
 
-                {/* MÉTODO DE ENVÍO */}
                 <div className="pt-2">
                     <Label className="mb-2 block">Método de Entrega</Label>
-                    <RadioGroup defaultValue="PICKUP" onValueChange={setDeliveryMethod} className="flex flex-col gap-3">
+                    <RadioGroup defaultValue="PICKUP" value={deliveryMethod} onValueChange={setDeliveryMethod} className="flex flex-col gap-3">
                         
                         <div className={`flex items-center space-x-3 border p-3 rounded-md cursor-pointer ${deliveryMethod === 'PICKUP' ? 'border-slate-900 bg-slate-50' : 'border-slate-200'}`}>
                             <RadioGroupItem value="PICKUP" id="r1" />
@@ -296,7 +301,6 @@ export default function CartPage() {
                     </RadioGroup>
                 </div>
 
-                {/* DIRECCIÓN (Solo si es Delivery) */}
                 {deliveryMethod === 'DELIVERY' && (
                     <div className="animate-in fade-in slide-in-from-top-2">
                         <Label htmlFor="address" className={errors.address ? "text-red-500" : ""}>Dirección de entrega</Label>
@@ -318,7 +322,6 @@ export default function CartPage() {
 
               <Separator className="my-4" />
               
-              {/* CUPÓN */}
               <div className="mb-4">
                   {!coupon ? (
                       <div className="flex gap-2">
@@ -349,7 +352,6 @@ export default function CartPage() {
                   )}
               </div>
 
-              {/* TOTALES */}
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between text-slate-600">
                   <span>Subtotal</span>
