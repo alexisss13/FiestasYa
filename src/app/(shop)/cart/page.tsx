@@ -153,7 +153,8 @@ export default function CartPage() {
     message += `\n*TOTAL A PAGAR: ${formatPrice(getGrandTotal())}*`;
     message += `\n\nQuedo atento a los datos de pago.`;
 
-    clearCart();
+    clearCart();      // Limpia items y cupón aplicado del store
+    setCouponCode(''); // Limpia el texto del input
     
     const url = `https://wa.me/${storeConfig.whatsappPhone}?text=${encodeURIComponent(message)}`;
     

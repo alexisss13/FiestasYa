@@ -114,15 +114,17 @@ export async function createOrder(data: CreateOrderInput) {
           from: 'FiestasYa <onboarding@resend.dev>',
           to: process.env.ADMIN_EMAIL,
           subject: `Nuevo Pedido #${order.id.split('-')[0].toUpperCase()} - ${data.name}`,
-          // 👇 AQUÍ ESTÁ EL TRUCO: 'as React.ReactElement'
           react: OrderEmail({
             orderId: order.id,
             customerName: data.name,
             customerPhone: data.phone,
             totalAmount: data.total,
             items: emailItems,
-            url: `${process.env.NEXT_PUBLIC_APP_URL || 'https://fiestasya.vercel.app'}/admin/orders/${order.id}`
-          }) as React.ReactElement, 
+            url: `${process.env.NEXT_PUBLIC_APP_URL || 'https://fiestasya.vercel.app'}/admin/orders/${order.id}`,
+            deliveryMethod: data.deliveryMethod || 'PICKUP',
+            shippingAddress: data.shippingAddress,
+            shippingCost: data.shippingCost || 0
+          }) as React.ReactElement,
         });
         console.log('📧 Notificación enviada al admin');
       }
