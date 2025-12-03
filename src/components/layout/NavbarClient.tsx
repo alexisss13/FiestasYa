@@ -26,7 +26,6 @@ function SearchInput({ className, onSearch }: SearchInputProps) {
   const [query, setQuery] = useState('');
 
   useEffect(() => {
-    // 🛡️ FIX: Usamos requestAnimationFrame o setTimeout para evitar el error de render síncrono
     const value = searchParams.get('q') || '';
     if (value !== query) {
         setQuery(value);
@@ -53,13 +52,13 @@ function SearchInput({ className, onSearch }: SearchInputProps) {
       <Input
         type="text"
         placeholder="Buscar productos..."
-        className="h-10 w-full pl-3 pr-10 bg-slate-50 border-slate-200 focus-visible:ring-slate-300"
+        className="h-10 w-full pl-3 pr-10 bg-slate-50 border-slate-200 focus-visible:ring-primary focus-visible:border-primary"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
       />
       <button 
         type="submit" 
-        className="absolute right-0 top-0 h-full px-3 text-slate-400 hover:text-slate-600 transition-colors"
+        className="absolute right-0 top-0 h-full px-3 text-slate-400 hover:text-primary transition-colors"
       >
         <Search className="h-4 w-4" />
         <span className="sr-only">Buscar</span>
@@ -88,15 +87,15 @@ export function NavbarClient({ categories }: NavbarClientProps) {
   ];
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur supports-backdrop-filter:bg-white/60">
+    <header className="sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         
         {/* 1. MENÚ MÓVIL */}
         <div className="md:hidden">
             <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="mr-2">
-                <Menu className="h-5 w-5" />
+              <Button variant="ghost" size="icon" className="mr-2 hover:text-primary">
+                <Menu className="h-6 w-6" />
                 <span className="sr-only">Abrir menú</span>
               </Button>
             </SheetTrigger>
@@ -105,7 +104,8 @@ export function NavbarClient({ categories }: NavbarClientProps) {
               
               <div className="flex flex-col h-full py-6">
                 <div className="px-6 mb-6">
-                   <span className="text-xl font-bold tracking-tighter text-slate-900">
+                    {/* LOGO MÓVIL */}
+                   <span className="text-2xl font-extrabold tracking-tighter text-primary">
                     FiestasYa
                   </span>
                 </div>
@@ -124,8 +124,10 @@ export function NavbarClient({ categories }: NavbarClientProps) {
                       href={route.href}
                       onClick={() => setIsSheetOpen(false)}
                       className={cn(
-                        "flex items-center rounded-md px-2 py-3 text-lg font-medium transition-colors hover:bg-slate-100",
-                        pathname === route.href ? "text-slate-900 bg-slate-50" : "text-slate-500"
+                        "flex items-center rounded-md px-2 py-3 text-lg font-medium transition-colors",
+                        pathname === route.href 
+                          ? "text-primary bg-primary/10 font-bold" 
+                          : "text-slate-600 hover:bg-slate-50 hover:text-primary"
                       )}
                     >
                       {route.label}
@@ -137,22 +139,22 @@ export function NavbarClient({ categories }: NavbarClientProps) {
           </Sheet>
         </div>
 
-        {/* 2. LOGO */}
-        <Link href="/" className="flex items-center gap-2">
-          <span className="text-xl font-bold tracking-tighter text-slate-900">
+        {/* 2. LOGO DESKTOP */}
+        <Link href="/" className="flex items-center gap-2 group">
+          <span className="text-2xl font-extrabold tracking-tighter text-primary group-hover:opacity-90 transition-opacity">
             FiestasYa
           </span>
         </Link>
 
         {/* 3. NAVEGACIÓN DESKTOP */}
-        <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
+        <nav className="hidden md:flex items-center gap-8 text-sm font-medium">
           {routes.map((route) => (
             <Link
               key={route.href}
               href={route.href}
               className={cn(
-                "transition-colors hover:text-slate-900",
-                pathname === route.href ? "text-slate-900" : "text-slate-500"
+                "transition-colors hover:text-primary",
+                pathname === route.href ? "text-primary font-bold" : "text-slate-600"
               )}
             >
               {route.label}
@@ -171,10 +173,10 @@ export function NavbarClient({ categories }: NavbarClientProps) {
           </div>
 
           <CartSidebar>
-            <Button variant="ghost" size="icon" className="relative text-slate-900 hover:bg-slate-100">
-              <ShoppingBag className="h-5 w-5" />
+            <Button variant="ghost" size="icon" className="relative text-slate-800 hover:text-primary hover:bg-primary/10">
+              <ShoppingBag className="h-6 w-6" />
               {loaded && totalItems > 0 && (
-                <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-slate-900 text-[10px] font-bold text-white fade-in zoom-in duration-300">
+                <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-white border-2 border-white">
                   {totalItems}
                 </span>
               )}
