@@ -20,7 +20,12 @@ export async function getStoreConfig() {
   } : { 
     whatsappPhone: '', 
     welcomeMessage: '', 
-    localDeliveryPrice: 0 
+    localDeliveryPrice: 0,
+    heroImage: '',
+    heroTitle: '',
+    heroSubtitle: '',
+    heroButtonText: '',
+    heroButtonLink: ''
   };
 }
 
