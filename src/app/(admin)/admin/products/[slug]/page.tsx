@@ -20,10 +20,13 @@ export default async function EditProductPage({ params }: Props) {
     notFound();
   }
   
-  // Transformamos el Decimal a number para el formulario
+  // Transformamos los datos para que TypeScript no llore
   const formattedProduct = {
     ...product,
     price: Number(product.price),
+    // 👇 EL TRUCO: Convertir null a undefined usando '??'
+    color: product.color ?? undefined,
+    groupTag: product.groupTag ?? undefined,
   };
 
   return (

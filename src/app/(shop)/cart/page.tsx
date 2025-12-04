@@ -21,18 +21,14 @@ export default function CartPage() {
   const { items, removeItem, updateQuantity, getTotalPrice, clearCart, applyCoupon, removeCoupon, getDiscountAmount, getFinalPrice, coupon } = useCartStore();
   const [isMounted, setIsMounted] = useState(false);
   
-  // Estados del Formulario
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [couponCode, setCouponCode] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<{ name?: string[], phone?: string[], address?: string[] }>({});
-
-  // Estados de Envío
   const [deliveryMethod, setDeliveryMethod] = useState('PICKUP'); 
   const [address, setAddress] = useState('');
   const [notes, setNotes] = useState('');
-
 
   const [storeConfig, setStoreConfig] = useState({
     whatsappPhone: '51999999999',
@@ -58,7 +54,6 @@ export default function CartPage() {
     return () => clearTimeout(timer);
   }, []);
 
-  // 🛡️ FIX: Usamos setTimeout para evitar el error "setState synchronously"
   useEffect(() => {
       if (!coupon) {
           const timer = setTimeout(() => setCouponCode(''), 0);
@@ -130,21 +125,20 @@ export default function CartPage() {
     const shortId = result.orderId!.split('-')[0].toUpperCase();
 
     let message = `${storeConfig.welcomeMessage}\n\n`; 
-    message += `*Pedido:* #${shortId}\n`;
-    message += `*Cliente:* ${name}\n`;
+    message += `🆔 *Pedido:* #${shortId}\n`;
+    message += `👤 *Cliente:* ${name}\n`;
     
     let deliveryText = "Recojo en Tienda";
     if (deliveryMethod === 'DELIVERY') deliveryText = `Delivery Local (${address})`;
     if (deliveryMethod === 'PROVINCE') deliveryText = "Envío a Provincia (Agencia)";
     
-    message += `*Entrega:* ${deliveryText}\n`;
+    message += `🚚 *Entrega:* ${deliveryText}\n`;
     message += `--------------------------------\n`;
-
+    
     if (notes.trim()) {
-        message += `*Notas:* ${notes}\n`;
+        message += `📝 *Notas:* ${notes}\n`;
+        message += `--------------------------------\n`;
     }
-
-    message += `--------------------------------\n`;
     
     items.forEach((item) => {
       message += `• ${item.quantity}x ${item.title}\n`;
@@ -159,18 +153,15 @@ export default function CartPage() {
         message += `\nEnvío: ${formatPrice(getShippingCost())}`;
     }
     
-    message += `\n*TOTAL A PAGAR: ${formatPrice(getGrandTotal())}*`;
+    message += `\n💰 *TOTAL A PAGAR: ${formatPrice(getGrandTotal())}*`;
     message += `\n\nQuedo atento a los datos de pago.`;
 
-    // Limpieza final
     const url = `https://wa.me/${storeConfig.whatsappPhone}?text=${encodeURIComponent(message)}`;
     window.open(url, '_blank');
 
     setTimeout(() => {
         clearCart();
-        removeCoupon(); // Aseguramos limpieza del store
-        // setCouponCode('') se ejecutará automáticamente gracias al useEffect corregido
-        
+        removeCoupon();
         setName('');
         setPhone('');
         setAddress('');
@@ -196,23 +187,33 @@ export default function CartPage() {
       </div>
     );
   }
+
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="mb-8 text-3xl font-bold text-slate-900">Carrito de Compras</h1>
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
+        
+        {/* COLUMNA IZQUIERDA (Items) */}
         <div className="lg:col-span-7 space-y-4">
           {items.map((item) => (
              <Card key={item.id} className="overflow-hidden border-slate-200">
                <CardContent className="flex gap-4 p-4">
-                 <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-md border bg-slate-100">
+                 
+                 {/* IMAGEN CLICABLE */}
+                 <Link href={`/product/${item.slug}`} className="relative h-24 w-24 shrink-0 overflow-hidden rounded-md border bg-slate-100 hover:opacity-80 transition-opacity">
                    <Image src={item.image} alt={item.title} fill className="object-cover" />
-                 </div>
+                 </Link>
+
                  <div className="flex flex-1 flex-col justify-between">
                    <div className="flex justify-between gap-2">
-                     <h3 className="font-semibold text-slate-900 line-clamp-2">{item.title}</h3>
+                     {/* TÍTULO CLICABLE */}
+                     <Link href={`/product/${item.slug}`} className="font-semibold text-slate-900 line-clamp-2 hover:text-primary hover:underline">
+                        {item.title}
+                     </Link>
                      <p className="font-bold text-slate-900">{formatPrice(item.price * item.quantity)}</p>
                    </div>
+                   
                    <div className="flex items-center justify-between mt-2">
                      <div className="flex items-center gap-2 rounded-md border p-1">
                        <Button variant="ghost" size="icon" className="h-6 w-6" disabled={item.quantity <= 1} onClick={() => updateQuantity(item.id, item.quantity - 1)}>
@@ -234,6 +235,7 @@ export default function CartPage() {
           ))}
         </div>
 
+        {/* ... COLUMNA DERECHA (Igual que antes) ... */}
         <div className="lg:col-span-5">
           <Card className="bg-slate-50 border-slate-200 sticky top-24">
             <CardContent className="p-6">
@@ -326,6 +328,7 @@ export default function CartPage() {
                         {errors.address && <p className="text-sm text-red-500 mt-1">{errors.address[0]}</p>}
                     </div>
                 )}
+
                 <div className="pt-2">
                     <Label htmlFor="notes" className="flex items-center gap-2 mb-2">
                         <MessageSquarePlus className="h-4 w-4" /> Notas del Pedido (Opcional)
@@ -400,16 +403,7 @@ export default function CartPage() {
                   <span className="text-base font-medium text-slate-900">Total a Pagar</span>
                   <span className="text-2xl font-bold text-slate-900">{formatPrice(getGrandTotal())}</span>
               </div>
-              <div className="mb-4">
-                <Label htmlFor="notes" className="mb-2 block text-slate-600">Notas o Personalización (Opcional)</Label>
-                <Textarea 
-                  id="notes"
-                  placeholder="Ej: El globo de número que sea un '5'. Nombre: 'Valentina'."
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  className="bg-white resize-none"
-                />
-              </div>
+
               <Button 
                 size="lg" 
                 className="w-full bg-green-600 hover:bg-green-700 text-lg shadow-md shadow-green-900/10 transition-all hover:scale-[1.01]"

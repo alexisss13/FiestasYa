@@ -9,30 +9,14 @@ import { productSchema } from '@/lib/zod';
 import { createOrUpdateProduct } from '@/actions/product-form';
 import ImageUpload from '@/components/ui/image-upload';
 import { toast } from 'sonner';
-
 import { Button } from '@/components/ui/button';
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, Save } from 'lucide-react';
-
+import { Loader2, Save, Palette, Tags } from 'lucide-react';
 type ProductFormValues = z.infer<typeof productSchema>;
 
 interface ProductFormProps {
@@ -56,6 +40,8 @@ export function ProductForm({ initialData, categories }: ProductFormProps) {
     categoryId: initialData.categoryId,
     images: initialData.images,
     isAvailable: initialData.isAvailable,
+    color: initialData.color || '',
+    groupTag: initialData.groupTag || '',
   } : {
     title: '',
     slug: '',
@@ -65,6 +51,8 @@ export function ProductForm({ initialData, categories }: ProductFormProps) {
     categoryId: '',
     images: [],
     isAvailable: true,
+    color: '',
+    groupTag: '',
   };
 
   const form = useForm<ProductFormValues>({
@@ -173,7 +161,40 @@ export function ProductForm({ initialData, categories }: ProductFormProps) {
                   />
                 </CardContent>
               </Card>
-
+              {/* 👇 NUEVA SECCIÓN: VARIANTES */}
+              <Card className="border-blue-100 bg-blue-50/30">
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-blue-900">
+                        <Palette className="h-5 w-5" /> Variantes de Color (Opcional)
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <FormField control={form.control} name="groupTag" render={({ field }) => (
+                        <FormItem>
+                            <FormLabel className="flex items-center gap-2"><Tags className="h-4 w-4"/> Agrupar con (Tag)</FormLabel>
+                            <FormControl><Input placeholder="Ej: globos-metalicos-numeros" {...field} /></FormControl>
+                            <FormDescription>Usa el MISMO texto exacto en todos los colores del mismo producto.</FormDescription>
+                            <FormMessage />
+                        </FormItem>
+                    )} />
+                    
+                    <FormField control={form.control} name="color" render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Color del Producto</FormLabel>
+                            <div className="flex gap-2">
+                                <div className="w-10 h-10 rounded border overflow-hidden relative shadow-sm">
+                                    <input type="color" className="absolute -top-2 -left-2 w-16 h-16 cursor-pointer" {...field} />
+                                </div>
+                                <FormControl>
+                                    <Input placeholder="#FF0000" {...field} className="flex-1 font-mono" />
+                                </FormControl>
+                            </div>
+                            <FormDescription>Selecciona el color representativo.</FormDescription>
+                            <FormMessage />
+                        </FormItem>
+                    )} />
+                </CardContent>
+              </Card>
               <Card>
                 <CardHeader>
                   <CardTitle>Inventario</CardTitle>

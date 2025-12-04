@@ -13,22 +13,27 @@ export async function createOrUpdateProduct(formData: z.infer<typeof productSche
       return { success: false, message: 'Datos inválidos', errors: validatedFields.error.flatten().fieldErrors };
     }
 
-    const { title, slug, description, price, stock, categoryId, images, isAvailable } = validatedFields.data;
+    // 👇 DESESTRUCTURAMOS LOS NUEVOS CAMPOS
+    const { title, slug, description, price, stock, categoryId, images, isAvailable, color, groupTag } = validatedFields.data;
+
+    const dataToSave = {
+        title,
+        slug,
+        description,
+        price,
+        stock,
+        images,
+        isAvailable,
+        categoryId,
+        color: color || null,       // Guardamos null si está vacío
+        groupTag: groupTag || null  // Guardamos null si está vacío
+    };
 
     if (id) {
       // UPDATE
       await prisma.product.update({
         where: { id },
-        data: {
-          title,
-          slug,
-          description,
-          price,
-          stock,
-          images,
-          isAvailable,
-          categoryId
-        }
+        data: dataToSave
       });
     } else {
       // CREATE
@@ -38,16 +43,7 @@ export async function createOrUpdateProduct(formData: z.infer<typeof productSche
       }
 
       await prisma.product.create({
-        data: {
-          title,
-          slug,
-          description,
-          price,
-          stock,
-          images,
-          isAvailable,
-          categoryId
-        }
+        data: dataToSave
       });
     }
 

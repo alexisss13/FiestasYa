@@ -9,6 +9,8 @@ export const productSchema = z.object({
   categoryId: z.string().min(1, { message: 'Debes seleccionar una categoría' }),
   images: z.array(z.string()).min(1, { message: 'Debes subir al menos una imagen' }),
   isAvailable: z.boolean().default(true),
+  color: z.string().optional(), 
+  groupTag: z.string().optional(),
 });
 
 export const categorySchema = z.object({

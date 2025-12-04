@@ -9,7 +9,7 @@ import {
   SheetHeader, 
   SheetTitle, 
   SheetTrigger,
-  SheetClose // 👈 1. Importamos esto para cerrar el modal
+  SheetClose 
 } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -34,11 +34,8 @@ export function CartSidebar({ children }: Props) {
         {children}
       </SheetTrigger>
       
-      {/* 2. ARREGLO VISUAL: Agregamos 'pl-6' para despegarlo del borde izquierdo.
-         Mantenemos 'pr-0' para que el scrollbar quede pegado al borde derecho estéticamente.
-      */}
       <SheetContent className="flex w-full flex-col pl-6 pr-0 sm:max-w-lg">
-        <SheetHeader className="px-1 text-left"> {/* Alineamos título a la izquierda */}
+        <SheetHeader className="px-1 text-left">
           <SheetTitle>Mi Carrito ({items.length})</SheetTitle>
         </SheetHeader>
 
@@ -57,29 +54,38 @@ export function CartSidebar({ children }: Props) {
         ) : (
           <>
             {/* LISTA DE ITEMS */}
-            <div className="flex-1 overflow-y-auto pr-6"> {/* pr-6 para separar del scrollbar */}
+            <div className="flex-1 overflow-y-auto pr-6">
               <div className="flex flex-col gap-5 py-4">
                 {items.map((item) => (
                   <div key={item.id} className="flex gap-4">
-                    <div className="relative h-20 w-20 min-w-20 overflow-hidden rounded-md border bg-slate-100">
-                      <Image
-                        src={item.image}
-                        alt={item.title}
-                        fill
-                        className="object-cover"
-                      />
-                    </div>
+                    
+                    {/* 👇 CAMBIO CLAVE: Imagen Clicable */}
+                    <SheetClose asChild>
+                        <Link href={`/product/${item.slug}`} className="relative h-20 w-20 min-w-[5rem] overflow-hidden rounded-md border bg-slate-100 block hover:opacity-80 transition-opacity">
+                            <Image
+                                src={item.image}
+                                alt={item.title}
+                                fill
+                                className="object-cover"
+                            />
+                        </Link>
+                    </SheetClose>
+
                     <div className="flex flex-1 flex-col">
                       <div className="flex justify-between text-base font-medium text-slate-900">
-                        <h3 className="line-clamp-2 text-sm font-normal">
-                          {item.title}
-                        </h3>
-                        <p className="ml-4 font-bold">
+                        {/* 👇 CAMBIO CLAVE: Título Clicable */}
+                        <SheetClose asChild>
+                            <Link href={`/product/${item.slug}`} className="line-clamp-2 text-sm font-normal hover:underline hover:text-primary">
+                                {item.title}
+                            </Link>
+                        </SheetClose>
+                        
+                        <p className="ml-4 font-bold whitespace-nowrap">
                           {formatPrice(item.price * item.quantity)}
                         </p>
                       </div>
                       
-                      <div className="flex flex-1 items-end justify-between text-sm">
+                      <div className="flex flex-1 items-end justify-between text-sm mt-2">
                         <div className="flex items-center gap-2 rounded-md border p-1 h-8">
                             <Button variant="ghost" size="icon" className="h-5 w-5" 
                                 disabled={item.quantity <= 1}
@@ -120,9 +126,6 @@ export function CartSidebar({ children }: Props) {
               </p>
               
               <div className="grid gap-2">
-                {/* 3. ARREGLO UX: Envolvemos el botón en SheetClose.
-                   Al hacer clic, navegará Y cerrará el panel al mismo tiempo.
-                */}
                 <SheetClose asChild>
                   <Button asChild className="w-full bg-slate-900 hover:bg-slate-800">
                       <Link href="/cart">

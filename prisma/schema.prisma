@@ -20,6 +20,9 @@ model Product {
   images      String[] // Array de URLs de Cloudinary
 
   isAvailable Boolean  @default(true) // 👈 NUEVO: Por defecto, todo nace visible
+
+  color       String?  // Ej: "#FF0000" (Hexadecimal)
+  groupTag    String?  // Ej: "globos-cromados" (Identificador para agrupar)
   
   category    Category @relation(fields: [categoryId], references: [id])
   categoryId  String
