@@ -74,8 +74,7 @@ export function NavbarClient({ categories }: NavbarClientProps) {
   const [isSheetOpen, setIsSheetOpen] = useState(false); 
   
   useEffect(() => {
-    const timer = setTimeout(() => setLoaded(true), 100);
-    return () => clearTimeout(timer);
+    setLoaded(true);
   }, []);
 
   const routes = [
@@ -92,51 +91,58 @@ export function NavbarClient({ categories }: NavbarClientProps) {
         
         {/* 1. MENÚ MÓVIL */}
         <div className="md:hidden">
-            <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="mr-2 hover:text-primary">
+            {/* SOLUCIÓN DE HIDRATACIÓN: Solo renderizamos el Sheet interactivo si el cliente cargó */}
+            {loaded ? (
+              <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+                <SheetTrigger asChild>
+                  <Button variant="ghost" size="icon" className="mr-2 hover:text-primary">
+                    <Menu className="h-6 w-6" />
+                    <span className="sr-only">Abrir menú</span>
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="left" className="w-[300px] sm:w-[400px] p-0">
+                  <SheetTitle className="sr-only">Menú</SheetTitle>
+                  
+                  <div className="flex flex-col h-full py-6">
+                    <div className="px-6 mb-6">
+                       <span className="text-xl font-bold tracking-tighter text-primary">
+                        FiestasYa
+                      </span>
+                    </div>
+
+                    {/* BUSCADOR MÓVIL */}
+                    <div className="px-6 mb-6">
+                        <Suspense fallback={<div className="h-10 bg-slate-100 rounded-md" />}>
+                            <SearchInput onSearch={() => setIsSheetOpen(false)} />
+                        </Suspense>
+                    </div>
+
+                    <nav className="flex flex-col gap-2 px-4">
+                      {routes.map((route) => (
+                        <Link
+                          key={route.href}
+                          href={route.href}
+                          onClick={() => setIsSheetOpen(false)}
+                          className={cn(
+                            "flex items-center rounded-md px-2 py-3 text-lg font-medium transition-colors",
+                            pathname === route.href 
+                              ? "text-primary bg-primary/10 font-bold" 
+                              : "text-slate-600 hover:bg-slate-50 hover:text-primary"
+                          )}
+                        >
+                          {route.label}
+                        </Link>
+                      ))}
+                    </nav>
+                  </div>
+                </SheetContent>
+              </Sheet>
+            ) : (
+              // Fallback visual mientras carga (evita layout shift pero no es interactivo)
+              <Button variant="ghost" size="icon" className="mr-2">
                 <Menu className="h-6 w-6" />
-                <span className="sr-only">Abrir menú</span>
               </Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="w-[300px] sm:w-[400px] p-0">
-              <SheetTitle className="sr-only">Menú</SheetTitle>
-              
-              <div className="flex flex-col h-full py-6">
-                <div className="px-6 mb-6">
-                    {/* LOGO MÓVIL */}
-                   <span className="text-2xl font-extrabold tracking-tighter text-primary">
-                    FiestasYa
-                  </span>
-                </div>
-
-                {/* BUSCADOR MÓVIL */}
-                <div className="px-6 mb-6">
-                    <Suspense fallback={<div className="h-10 bg-slate-100 rounded-md" />}>
-                        <SearchInput onSearch={() => setIsSheetOpen(false)} />
-                    </Suspense>
-                </div>
-
-                <nav className="flex flex-col gap-2 px-4">
-                  {routes.map((route) => (
-                    <Link
-                      key={route.href}
-                      href={route.href}
-                      onClick={() => setIsSheetOpen(false)}
-                      className={cn(
-                        "flex items-center rounded-md px-2 py-3 text-lg font-medium transition-colors",
-                        pathname === route.href 
-                          ? "text-primary bg-primary/10 font-bold" 
-                          : "text-slate-600 hover:bg-slate-50 hover:text-primary"
-                      )}
-                    >
-                      {route.label}
-                    </Link>
-                  ))}
-                </nav>
-              </div>
-            </SheetContent>
-          </Sheet>
+            )}
         </div>
 
         {/* 2. LOGO DESKTOP */}
@@ -176,7 +182,7 @@ export function NavbarClient({ categories }: NavbarClientProps) {
             <Button variant="ghost" size="icon" className="relative text-slate-800 hover:text-primary hover:bg-primary/10">
               <ShoppingBag className="h-6 w-6" />
               {loaded && totalItems > 0 && (
-                <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-white border-2 border-white">
+                <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-white border-2 border-white animate-in zoom-in">
                   {totalItems}
                 </span>
               )}

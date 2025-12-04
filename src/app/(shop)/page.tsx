@@ -15,21 +15,30 @@ function BannerGrid({ banners }: { banners: any[] }) {
 
   return (
     <section className="container mx-auto px-4 py-8">
-      {/* Usamos auto-fill con minmax para responsive fluido */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {/* 👇 CAMBIO CLAVE: Usamos 12 columnas para máxima flexibilidad */}
+      <div className="grid grid-cols-12 gap-6">
         {banners.map((banner) => {
-            // Lógica de tamaños
-            let colSpan = "col-span-1"; // GRID
-            if (banner.size === 'FULL') colSpan = "md:col-span-2 lg:col-span-3 h-[350px]";
-            if (banner.size === 'HALF') colSpan = "md:col-span-1 lg:col-span-2 h-[280px]"; // Mitad en pantallas grandes (o 2/3 en grid de 3)
-            // Ajuste visual: Si es HALF en grid de 3, ocupa 2 espacios. Si hay 2 HALF, se verá raro en grid de 3, 
-            // pero flexible en grid de 2. Lo ideal es jugar con el orden.
+            
+            // Lógica de columnas basada en el tamaño
+            let colSpanClass = "col-span-12"; // Por defecto full width en móvil
+            let heightClass = "h-64";
+
+            if (banner.size === 'FULL') {
+                colSpanClass = "col-span-12"; // 100%
+                heightClass = "h-[300px] md:h-[400px]"; // Más alto
+            } else if (banner.size === 'HALF') {
+                colSpanClass = "col-span-12 md:col-span-6"; // 50%
+                heightClass = "h-[280px]";
+            } else if (banner.size === 'GRID') {
+                colSpanClass = "col-span-12 md:col-span-4"; // 33% (1/3)
+                heightClass = "h-64";
+            }
 
             return (
               <Link 
                 key={banner.id} 
                 href={banner.link} 
-                className={`group relative overflow-hidden rounded-xl shadow-md hover:shadow-xl transition-all ${colSpan} ${banner.size === 'GRID' ? 'h-64' : ''}`}
+                className={`group relative overflow-hidden rounded-xl shadow-md hover:shadow-xl transition-all ${colSpanClass} ${heightClass}`}
               >
                 <Image 
                     src={banner.image} 
@@ -37,14 +46,16 @@ function BannerGrid({ banners }: { banners: any[] }) {
                     fill 
                     className="object-cover transition-transform duration-700 group-hover:scale-105"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent flex items-end p-6">
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent flex items-end p-6">
                     <div className="w-full flex flex-col sm:flex-row sm:items-end justify-between gap-3">
-                        <h3 
-                            className={`font-extrabold drop-shadow-md leading-tight ${banner.size === 'GRID' ? 'text-xl' : 'text-3xl'}`}
-                            style={{ color: banner.textColor || '#FFFFFF' }}
-                        >
-                            {banner.title}
-                        </h3>
+                        <div>
+                             <h3 
+                                className={`font-extrabold drop-shadow-md leading-tight ${banner.size === 'GRID' ? 'text-xl' : 'text-2xl md:text-3xl'}`}
+                                style={{ color: banner.textColor || '#FFFFFF' }}
+                            >
+                                {banner.title}
+                            </h3>
+                        </div>
                         <span 
                             style={{ backgroundColor: banner.btnColor, color: banner.btnTextColor || '#FFFFFF' }} 
                             className="inline-block px-4 py-2 rounded-full text-sm font-bold shadow-lg transform transition-transform group-hover:-translate-y-1 text-center min-w-[100px]"
