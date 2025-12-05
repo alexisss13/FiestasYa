@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import Image from 'next/image';
+import Image from 'next/image'; 
 import { getProducts } from '@/actions/products';
 import { getStoreConfig } from '@/actions/settings';
 import { getBanners } from '@/actions/design';
@@ -9,32 +9,46 @@ import { Button } from '@/components/ui/button';
 import { PartyPopper } from 'lucide-react';
 
 export const revalidate = 60; 
+
 interface Props {
-  searchParams: Promise<{ sort?: string }>; // 👈 Recibimos params
+  searchParams: Promise<{ sort?: string }>;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function BannerGrid({ banners }: { banners: any[] }) {
+// 1. Definimos la interfaz para que TypeScript no se queje del "any"
+interface Banner {
+  id: string;
+  title: string;
+  image: string;
+  link: string;
+  btnText: string;
+  btnColor: string;
+  btnTextColor: string; // Nuevo campo
+  textColor: string;    // Nuevo campo
+  position: string;
+  size: string;
+}
+
+function BannerGrid({ banners }: { banners: Banner[] }) {
   if (!banners || banners.length === 0) return null;
 
   return (
     <section className="container mx-auto px-4 py-8">
-      {/* 👇 CAMBIO CLAVE: Usamos 12 columnas para máxima flexibilidad */}
+      {/* Grid de 12 columnas para máxima flexibilidad */}
       <div className="grid grid-cols-12 gap-6">
         {banners.map((banner) => {
             
-            // Lógica de columnas basada en el tamaño
-            let colSpanClass = "col-span-12"; // Por defecto full width en móvil
+            // Lógica de tamaños
+            let colSpanClass = "col-span-12"; 
             let heightClass = "h-64";
 
             if (banner.size === 'FULL') {
-                colSpanClass = "col-span-12"; // 100%
-                heightClass = "h-[300px] md:h-[400px]"; // Más alto
+                colSpanClass = "col-span-12"; 
+                heightClass = "h-[300px] md:h-[400px]"; 
             } else if (banner.size === 'HALF') {
-                colSpanClass = "col-span-12 md:col-span-6"; // 50%
+                colSpanClass = "col-span-12 md:col-span-6"; 
                 heightClass = "h-[280px]";
             } else if (banner.size === 'GRID') {
-                colSpanClass = "col-span-12 md:col-span-4"; // 33% (1/3)
+                colSpanClass = "col-span-12 md:col-span-4"; 
                 heightClass = "h-64";
             }
 
@@ -50,7 +64,7 @@ function BannerGrid({ banners }: { banners: any[] }) {
                     fill 
                     className="object-cover transition-transform duration-700 group-hover:scale-105"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent flex items-end p-6">
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent flex items-end p-6">
                     <div className="w-full flex flex-col sm:flex-row sm:items-end justify-between gap-3">
                         <div>
                              <h3 
@@ -77,20 +91,24 @@ function BannerGrid({ banners }: { banners: any[] }) {
 }
 
 export default async function HomePage({ searchParams }: Props) {
-  const { sort } = await searchParams; 
+  const { sort } = await searchParams; // Esperamos los params
+
   const [productsRes, config, banners] = await Promise.all([
-    getProducts({ sort: sort || 'newest' }),
+    getProducts({ sort: sort || 'newest' }), // Pasamos el ordenamiento
     getStoreConfig(),
-    getBanners(true) // Solo activos
+    getBanners(true)
   ]);
 
   const products = productsRes.data;
-  const topBanners = banners.filter((b: any) => b.position === 'TOP');
-  const bottomBanners = banners.filter((b: any) => b.position === 'BOTTOM');
+  // Convertimos a tipo Banner[] forzando el tipado si Prisma devuelve campos extra, o confiamos en la inferencia
+  const allBanners = banners as unknown as Banner[];
+  
+  const topBanners = allBanners.filter(b => b.position === 'TOP');
+  const bottomBanners = allBanners.filter(b => b.position === 'BOTTOM');
 
   return (
     <main>
-      {/* 1. HERO SECTION PERSONALIZABLE */}
+      {/* 1. HERO SECTION */}
       <section className="relative h-[500px] md:h-[600px] w-full overflow-hidden flex items-center justify-center text-center bg-slate-900">
         {config.heroImage ? (
             <Image 
@@ -121,7 +139,7 @@ export default async function HomePage({ searchParams }: Props) {
         </div>
       </section>
 
-      {/* 2. BANNERS SUPERIORES (TOP) */}
+      {/* 2. BANNERS SUPERIORES */}
       <BannerGrid banners={topBanners} />
 
       {/* 3. CATÁLOGO */}
@@ -132,7 +150,7 @@ export default async function HomePage({ searchParams }: Props) {
              <div className="mt-1 h-1 w-20 rounded-full bg-primary md:ml-1"></div>
           </div>
           
-          {/* 👇 AQUÍ EL FILTRO DE ORDENAMIENTO */}
+          {/* FILTRO */}
           <ProductSort />
         </div>
 
@@ -149,9 +167,8 @@ export default async function HomePage({ searchParams }: Props) {
           </div>
         )}
       </section>
-      
 
-      {/* 4. BANNERS INFERIORES (BOTTOM) */}
+      {/* 4. BANNERS INFERIORES */}
       <BannerGrid banners={bottomBanners} />
 
     </main>
