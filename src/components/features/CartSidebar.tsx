@@ -20,7 +20,8 @@ interface Props {
 }
 
 export function CartSidebar({ children }: Props) {
-  const { items, removeItem, updateQuantity, getTotalPrice } = useCartStore();
+  // ⚠️ CAMBIO AQUÍ: Usamos getSubtotalPrice en lugar de getTotalPrice
+  const { items, removeItem, updateQuantity, getSubtotalPrice } = useCartStore();
 
   const formatPrice = (value: number) =>
     new Intl.NumberFormat('es-PE', {
@@ -59,7 +60,6 @@ export function CartSidebar({ children }: Props) {
                 {items.map((item) => (
                   <div key={item.id} className="flex gap-4">
                     
-                    {/* 👇 CAMBIO CLAVE: Imagen Clicable */}
                     <SheetClose asChild>
                         <Link href={`/product/${item.slug}`} className="relative h-20 w-20 min-w-[5rem] overflow-hidden rounded-md border bg-slate-100 block hover:opacity-80 transition-opacity">
                             <Image
@@ -73,7 +73,6 @@ export function CartSidebar({ children }: Props) {
 
                     <div className="flex flex-1 flex-col">
                       <div className="flex justify-between text-base font-medium text-slate-900">
-                        {/* 👇 CAMBIO CLAVE: Título Clicable */}
                         <SheetClose asChild>
                             <Link href={`/product/${item.slug}`} className="line-clamp-2 text-sm font-normal hover:underline hover:text-primary">
                                 {item.title}
@@ -119,7 +118,8 @@ export function CartSidebar({ children }: Props) {
               <Separator className="my-4" />
               <div className="mb-4 flex justify-between text-base font-medium text-slate-900">
                 <p>Subtotal</p>
-                <p>{formatPrice(getTotalPrice())}</p>
+                {/* ⚠️ CAMBIO AQUÍ: Llamada a la función correcta */}
+                <p>{formatPrice(getSubtotalPrice())}</p>
               </div>
               <p className="mt-0.5 mb-4 text-sm text-slate-500">
                 El envío se calcula al coordinar.

@@ -1,16 +1,16 @@
-import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
 import { Badge } from '@/components/ui/badge';
-import prisma from '@/lib/prisma'; // Importamos prisma directo para la query compleja
+import prisma from '@/lib/prisma';
 import { AddToCartButton } from '@/components/features/AddToCartButton';
+import { ProductImageGallery } from '@/components/features/ProductImageGallery'; // 👈 Importamos la galería
+import { SITE_URL } from '@/lib/utils';
 
 interface Props {
   params: Promise<{ slug: string }>;
 }
 
-// Helper para obtener producto + hermanos
 async function getProductData(slug: string) {
   const product = await prisma.product.findUnique({
     where: { slug },
@@ -19,24 +19,20 @@ async function getProductData(slug: string) {
 
   if (!product) return null;
 
-  // Buscar hermanos si tiene tag
   let siblings: { slug: string; color: string | null; title: string }[] = [];
   
   if (product.groupTag) {
     siblings = await prisma.product.findMany({
       where: {
         groupTag: product.groupTag,
-        isAvailable: true, // Solo mostrar disponibles
-        NOT: { id: product.id } // Excluir el actual (opcional, pero mejor incluirlo para la lista completa)
+        isAvailable: true,
+        NOT: { id: product.id }
       },
       select: { slug: true, color: true, title: true },
-      orderBy: { createdAt: 'asc' } // Ordenar por creación para consistencia
+      orderBy: { createdAt: 'asc' }
     });
     
-    // Agregamos el actual a la lista para mostrar todos los colores
     siblings.push({ slug: product.slug, color: product.color, title: product.title });
-    
-    // Ordenamos para que siempre salgan en el mismo orden visual
     siblings.sort((a, b) => a.slug.localeCompare(b.slug));
   }
 
@@ -46,11 +42,36 @@ async function getProductData(slug: string) {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const data = await getProductData(slug);
-  if (!data) return { title: 'Producto no encontrado' };
+  
+  if (!data) {
+    return {
+      title: 'Producto no encontrado',
+      description: 'El producto que buscas no existe en FiestasYa.'
+    };
+  }
+
+  const { product } = data;
+  const productUrl = `${SITE_URL}/product/${product.slug}`;
+  const imageUrl = product.images[0] || `${SITE_URL}/og-image.jpg`;
+
   return {
-    title: `${data.product.title} | FiestasYa`,
-    description: data.product.description,
-    openGraph: { images: data.product.images[0] ? [data.product.images[0]] : [] },
+    title: `${product.title} | FiestasYa`,
+    description: product.description.substring(0, 160),
+    openGraph: {
+      title: product.title,
+      description: product.description,
+      url: productUrl,
+      siteName: 'FiestasYa',
+      images: [
+        {
+          url: imageUrl,
+          width: 800,
+          height: 800,
+          alt: product.title,
+        },
+      ],
+      type: 'website',
+    },
   };
 }
 
@@ -65,31 +86,46 @@ export default async function ProductPage({ params }: Props) {
     new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(value);
 
   const isOutOfStock = product.stock <= 0;
+  const productPrice = Number(product.price);
+
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: product.title,
+    description: product.description,
+    image: product.images,
+    sku: product.id,
+    offers: {
+      '@type': 'Offer',
+      price: productPrice,
+      priceCurrency: 'PEN',
+      availability: isOutOfStock 
+        ? 'https://schema.org/OutOfStock' 
+        : 'https://schema.org/InStock',
+      url: `${SITE_URL}/product/${product.slug}`,
+      seller: {
+        '@type': 'Organization',
+        name: 'FiestasYa'
+      }
+    }
+  };
 
   return (
     <div className="container mx-auto px-4 py-10">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+
       <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:gap-16">
         
-        {/* COLUMNA IZQUIERDA: IMAGEN */}
-        <div className="relative aspect-square overflow-hidden rounded-xl border bg-slate-100 shadow-sm">
-          {product.images[0] ? (
-            <Image
-              src={product.images[0]}
-              alt={product.title}
-              fill
-              className={`object-cover ${isOutOfStock ? 'opacity-50 grayscale' : ''}`}
-              priority 
-              sizes="(max-width: 768px) 100vw, 50vw"
-            />
-          ) : (
-            <div className="flex h-full items-center justify-center text-slate-400">Sin imagen</div>
-          )}
-          {isOutOfStock && (
-             <div className="absolute inset-0 flex items-center justify-center">
-                <Badge variant="destructive" className="text-xl px-6 py-2 pointer-events-none">AGOTADO</Badge>
-             </div>
-          )}
-        </div>
+        {/* COLUMNA IZQUIERDA: GALERÍA DE IMÁGENES */}
+        {/* 👇 AQUÍ ESTÁ EL CAMBIO: Usamos el componente interactivo */}
+        <ProductImageGallery 
+            images={product.images} 
+            title={product.title} 
+            isOutOfStock={isOutOfStock} 
+        />
 
         {/* COLUMNA DERECHA: INFORMACIÓN */}
         <div className="flex flex-col justify-center">
@@ -102,11 +138,10 @@ export default async function ProductPage({ params }: Props) {
           </h1>
           
           <div className="mb-6 flex items-baseline gap-4">
-             <span className="text-2xl font-bold text-slate-900">{formatPrice(Number(product.price))}</span>
+             <span className="text-2xl font-bold text-slate-900">{formatPrice(productPrice)}</span>
              {isOutOfStock ? <span className="text-sm font-medium text-red-500">Sin stock</span> : (product.stock <= 5 && <span className="text-sm font-medium text-orange-500">¡Quedan solo {product.stock}!</span>)}
           </div>
 
-          {/* 👇 AQUÍ ESTÁ LA MAGIA: SELECTOR DE COLORES */}
           {siblings.length > 0 && (
             <div className="mb-8">
                 <p className="text-sm font-medium text-slate-900 mb-3">Colores disponibles:</p>
@@ -123,10 +158,9 @@ export default async function ProductPage({ params }: Props) {
                                     ${isActive ? 'border-slate-900 ring-2 ring-slate-200 ring-offset-1 scale-110' : 'border-slate-200 hover:scale-110 hover:border-slate-400'}
                                 `}
                             >
-                                {/* Bolita de color */}
                                 <span 
                                     className="w-full h-full rounded-full" 
-                                    style={{ backgroundColor: variant.color || '#ccc' }} // Gris si no hay color definido
+                                    style={{ backgroundColor: variant.color || '#ccc' }} 
                                 />
                             </Link>
                         );
@@ -139,8 +173,7 @@ export default async function ProductPage({ params }: Props) {
             {product.description}
           </p>
 
-          {/* Pasamos el producto serializado al cliente */}
-          <AddToCartButton product={{...product, price: Number(product.price)}} />
+          <AddToCartButton product={{...product, price: productPrice}} />
           
           <div className="mt-8 pt-8 border-t border-slate-100 grid grid-cols-2 gap-4 text-sm text-slate-500">
              <div><span className="block font-medium text-slate-900">Entrega</span>Coordinación inmediata</div>

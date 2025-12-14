@@ -18,7 +18,8 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Textarea } from '@/components/ui/textarea';
 
 export default function CartPage() {
-  const { items, removeItem, updateQuantity, getTotalPrice, clearCart, applyCoupon, removeCoupon, getDiscountAmount, getFinalPrice, coupon } = useCartStore();
+  // ⚠️ CAMBIO AQUÍ: getSubtotalPrice en lugar de getTotalPrice
+  const { items, removeItem, updateQuantity, getSubtotalPrice, clearCart, applyCoupon, removeCoupon, getDiscountAmount, getFinalPrice, coupon } = useCartStore();
   const [isMounted, setIsMounted] = useState(false);
   
   const [name, setName] = useState('');
@@ -83,6 +84,7 @@ export default function CartPage() {
     return 0; 
   };
 
+  // El Grand Total ahora suma el precio final (con descuento) + envío
   const getGrandTotal = () => {
     return getFinalPrice() + getShippingCost();
   };
@@ -144,8 +146,9 @@ export default function CartPage() {
       message += `• ${item.quantity}x ${item.title}\n`;
     });
     
+    // ⚠️ CAMBIO AQUÍ: Usar getSubtotalPrice
     if (coupon) {
-        message += `\nSubtotal: ${formatPrice(getTotalPrice())}`;
+        message += `\nSubtotal: ${formatPrice(getSubtotalPrice())}`;
         message += `\nDescuento (${coupon.code}): -${formatPrice(getDiscountAmount())}`;
     }
 
@@ -200,14 +203,12 @@ export default function CartPage() {
              <Card key={item.id} className="overflow-hidden border-slate-200">
                <CardContent className="flex gap-4 p-4">
                  
-                 {/* IMAGEN CLICABLE */}
                  <Link href={`/product/${item.slug}`} className="relative h-24 w-24 shrink-0 overflow-hidden rounded-md border bg-slate-100 hover:opacity-80 transition-opacity">
                    <Image src={item.image} alt={item.title} fill className="object-cover" />
                  </Link>
 
                  <div className="flex flex-1 flex-col justify-between">
                    <div className="flex justify-between gap-2">
-                     {/* TÍTULO CLICABLE */}
                      <Link href={`/product/${item.slug}`} className="font-semibold text-slate-900 line-clamp-2 hover:text-primary hover:underline">
                         {item.title}
                      </Link>
@@ -235,12 +236,13 @@ export default function CartPage() {
           ))}
         </div>
 
-        {/* ... COLUMNA DERECHA (Igual que antes) ... */}
+        {/* COLUMNA DERECHA (Resumen) */}
         <div className="lg:col-span-5">
           <Card className="bg-slate-50 border-slate-200 sticky top-24">
             <CardContent className="p-6">
               <h2 className="text-xl font-semibold text-slate-900 mb-4">Finalizar Compra</h2>
               
+              {/* Formulario */}
               <div className="space-y-4 mb-6">
                 <div className="grid w-full items-center gap-1.5">
                   <Label htmlFor="name" className={errors.name ? "text-red-500" : ""}>Nombre completo</Label>
@@ -346,6 +348,7 @@ export default function CartPage() {
 
               <Separator className="my-4" />
               
+              {/* CUPONES */}
               <div className="mb-4">
                   {!coupon ? (
                       <div className="flex gap-2">
@@ -376,10 +379,12 @@ export default function CartPage() {
                   )}
               </div>
 
+              {/* TOTALES */}
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between text-slate-600">
                   <span>Subtotal</span>
-                  <span>{formatPrice(getTotalPrice())}</span>
+                  {/* ⚠️ CAMBIO AQUÍ: Llamada a la función correcta */}
+                  <span>{formatPrice(getSubtotalPrice())}</span>
                 </div>
                 
                 {coupon && (

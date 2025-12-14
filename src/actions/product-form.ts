@@ -3,7 +3,7 @@
 import { z } from 'zod';
 import prisma from '@/lib/prisma';
 import { productSchema } from '@/lib/zod';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
 
 export async function createOrUpdateProduct(formData: z.infer<typeof productSchema>, id: string | null) {
   try {
@@ -13,7 +13,6 @@ export async function createOrUpdateProduct(formData: z.infer<typeof productSche
       return { success: false, message: 'Datos inválidos', errors: validatedFields.error.flatten().fieldErrors };
     }
 
-    // 👇 DESESTRUCTURAMOS LOS NUEVOS CAMPOS
     const { title, slug, description, price, stock, categoryId, images, isAvailable, color, groupTag } = validatedFields.data;
 
     const dataToSave = {
@@ -25,8 +24,8 @@ export async function createOrUpdateProduct(formData: z.infer<typeof productSche
         images,
         isAvailable,
         categoryId,
-        color: color || null,       // Guardamos null si está vacío
-        groupTag: groupTag || null  // Guardamos null si está vacío
+        color: color || null,
+        groupTag: groupTag || null
     };
 
     if (id) {
@@ -47,6 +46,9 @@ export async function createOrUpdateProduct(formData: z.infer<typeof productSche
       });
     }
 
+    // ⚠️ CORRECCIÓN: Agregamos 'default' como segundo argumento
+    revalidateTag('products', 'default'); 
+    
     revalidatePath('/admin/products');
     revalidatePath('/');
     revalidatePath('/(shop)');

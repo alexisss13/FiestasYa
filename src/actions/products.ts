@@ -1,7 +1,9 @@
 'use server';
 
 import prisma from '@/lib/prisma';
-import { revalidatePath } from 'next/cache';
+import { Prisma } from '@prisma/client';
+import { revalidatePath, revalidateTag } from 'next/cache';
+import { unstable_cache } from 'next/cache';
 
 export type ProductWithCategory = {
   id: string;
@@ -17,49 +19,38 @@ export type ProductWithCategory = {
   };
 };
 
-// Helper para definir el ordenamiento
-const getOrderBy = (sort: string) => {
+const getOrderBy = (sort: string): Prisma.ProductOrderByWithRelationInput => {
     switch (sort) {
-        case 'price_asc': return { price: 'asc' as const };
-        case 'price_desc': return { price: 'desc' as const };
-        case 'newest': return { createdAt: 'desc' as const };
-        default: return { createdAt: 'desc' as const };
+        case 'price_asc': return { price: 'asc' };
+        case 'price_desc': return { price: 'desc' };
+        case 'newest': return { createdAt: 'desc' };
+        default: return { createdAt: 'desc' };
     }
 };
 
-// Modificamos la firma de la función para aceptar 'query'
-export async function getProducts({ 
-  includeInactive = false, 
-  query = '', // 👈 Nuevo parámetro opcional
-  sort = 'newest'
-} = {}) {
-  try {
-    // Construimos el filtro dinámicamente
-    const whereClause: any = {};
+// --- VERSIÓN CACHEADA ---
+const getCachedProducts = unstable_cache(
+  async (includeInactive: boolean, query: string, sort: string) => {
+    const whereClause: Prisma.ProductWhereInput = {};
 
-    // 1. Filtro de Disponibilidad (Admin vs Public)
     if (!includeInactive) {
       whereClause.isAvailable = true;
     }
 
-    // 2. Filtro de Búsqueda (Texto)
     if (query) {
       whereClause.OR = [
-        { title: { contains: query, mode: 'insensitive' } }, // Insensitive = da igual mayúsculas/minúsculas
+        { title: { contains: query, mode: 'insensitive' } },
         { description: { contains: query, mode: 'insensitive' } },
       ];
     }
 
     const products = await prisma.product.findMany({
       where: whereClause,
-      include: {
-        category: true,
-      },
+      include: { category: true },
       orderBy: getOrderBy(sort),
     });
 
-    // ... (El resto del mapeo 'cleanProducts' se queda EXACTAMENTE IGUAL)
-    const cleanProducts: ProductWithCategory[] = products.map((product) => ({
+    return products.map((product) => ({
       id: product.id,
       title: product.title,
       slug: product.slug,
@@ -72,10 +63,40 @@ export async function getProducts({
         slug: product.category.slug,
       },
     }));
+  },
+  ['get-products-cache'], 
+  {
+    tags: ['products'], 
+    revalidate: 3600 
+  }
+);
 
+// --- SERVER ACTION PÚBLICO ---
+export async function getProducts({ 
+  includeInactive = false, 
+  query = '', 
+  sort = 'newest'
+} = {}) {
+  try {
+    if (includeInactive) {
+       const products = await prisma.product.findMany({
+         orderBy: getOrderBy(sort),
+         include: { category: true }
+       });
+       
+       const data = products.map(p => ({
+         ...p,
+         price: Number(p.price),
+         category: { name: p.category.name, slug: p.category.slug }
+       }));
+       return { success: true, data };
+    }
+
+    const cachedData = await getCachedProducts(includeInactive, query, sort);
+    
     return {
       success: true,
-      data: cleanProducts,
+      data: cachedData,
     };
   } catch (error) {
     console.error('Error obteniendo productos:', error);
@@ -87,82 +108,82 @@ export async function getProducts({
   }
 }
 
-export async function getProduct(slug: string) {
-  try {
-    const product = await prisma.product.findFirst({
-      where: {
-        slug: slug,
-        isAvailable: true,
-      },
-      include: {
-        category: true,
-      },
-    });
+export const getProduct = unstable_cache(
+  async (slug: string) => {
+    try {
+      const product = await prisma.product.findFirst({
+        where: { slug: slug, isAvailable: true },
+        include: { category: true },
+      });
 
-    if (!product) return null;
+      if (!product) return null;
 
-    return {
-      id: product.id,
-      title: product.title,
-      description: product.description,
-      slug: product.slug,
-      price: Number(product.price),
-      stock: product.stock,
-      images: product.images,
-      isAvailable: product.isAvailable,
-      category: {
-        name: product.category.name,
-        slug: product.category.slug,
-      },
-    };
-  } catch (error) {
-    console.log(error);
-    throw new Error('Error al obtener el producto por slug');
-  }
-}
+      return {
+        id: product.id,
+        title: product.title,
+        description: product.description,
+        slug: product.slug,
+        price: Number(product.price),
+        stock: product.stock,
+        images: product.images,
+        isAvailable: product.isAvailable,
+        category: {
+          name: product.category.name,
+          slug: product.category.slug,
+        },
+        color: product.color,
+        groupTag: product.groupTag
+      };
+    } catch (error) {
+      console.log(error);
+      return null;
+    }
+  },
+  ['get-single-product'], 
+  { tags: ['products'] }
+);
 
-export async function getProductsByCategory(categorySlug: string, sort = 'newest') {
-  try {
-    const category = await prisma.category.findUnique({
-      where: { slug: categorySlug },
-    });
+export const getProductsByCategory = unstable_cache(
+  async (categorySlug: string, sort = 'newest') => {
+    try {
+      const category = await prisma.category.findUnique({
+        where: { slug: categorySlug },
+      });
 
-    if (!category) return null;
+      if (!category) return null;
 
-    const products = await prisma.product.findMany({
-      where: {
-        categoryId: category.id,
-        isAvailable: true,
-      },
-      include: {
-        category: true,
-      },
-      orderBy: getOrderBy(sort),
-    });
+      const products = await prisma.product.findMany({
+        where: { categoryId: category.id, isAvailable: true },
+        include: { category: true },
+        orderBy: getOrderBy(sort),
+      });
 
-    const cleanProducts = products.map((product) => ({
-      id: product.id,
-      title: product.title,
-      slug: product.slug,
-      price: Number(product.price),
-      stock: product.stock,
-      images: product.images,
-      isAvailable: product.isAvailable,
-      category: {
-        name: product.category.name,
-        slug: product.category.slug,
-      },
-    }));
+      const cleanProducts = products.map((product) => ({
+        id: product.id,
+        title: product.title,
+        slug: product.slug,
+        price: Number(product.price),
+        stock: product.stock,
+        images: product.images,
+        isAvailable: product.isAvailable,
+        category: {
+          name: product.category.name,
+          slug: product.category.slug,
+        },
+      }));
 
-    return {
-      categoryName: category.name,
-      products: cleanProducts,
-    };
-  } catch (error) {
-    console.log(error);
-    return null;
-  }
-}
+      return {
+        categoryName: category.name,
+        products: cleanProducts,
+      };
+    } catch (error) {
+      console.log(error);
+      return null;
+    }
+  },
+  ['get-products-by-category'],
+  { tags: ['products', 'categories'] }
+);
 
 export async function deleteProduct(id: string) {
   try {
@@ -174,9 +195,11 @@ export async function deleteProduct(id: string) {
       },
     });
     
+    // ⚠️ CORRECCIÓN: Agregamos 'default' como segundo argumento
+    revalidateTag('products', 'default'); 
+    
     revalidatePath('/admin/products');
     revalidatePath('/');
-    revalidatePath('/(shop)');
     
     return { success: true };
   } catch (error) {

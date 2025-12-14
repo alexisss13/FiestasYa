@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { calculateSubtotal, calculateDiscount, calculateTotal } from '@/lib/cart-calculator'; // 👈 Importamos el cerebro
 
-// Definimos qué forma tiene un producto EN EL CARRITO (puede ser diferente a la BD)
 export interface CartItem {
   id: string;
   slug: string;
@@ -13,19 +13,20 @@ export interface CartItem {
 
 interface CartState {
   items: CartItem[];
-  coupon: { code: string; discount: number; type: 'FIXED' | 'PERCENTAGE' } | null; // 👈 Nuevo estado
+  coupon: { code: string; discount: number; type: 'FIXED' | 'PERCENTAGE' } | null;
   
   addItem: (product: CartItem) => void;
   removeItem: (productId: string) => void;
   updateQuantity: (productId: string, quantity: number) => void;
   clearCart: () => void;
-  applyCoupon: (coupon: { code: string; discount: number; type: 'FIXED' | 'PERCENTAGE' }) => void; // 👈 Acción
-  removeCoupon: () => void; // 👈 Acción
+  applyCoupon: (coupon: { code: string; discount: number; type: 'FIXED' | 'PERCENTAGE' }) => void;
+  removeCoupon: () => void;
   
+  // Getters computados
   getTotalItems: () => number;
-  getTotalPrice: () => number;
-  getDiscountAmount: () => number; // 👈 Helper
-  getFinalPrice: () => number; // 👈 Helper
+  getSubtotalPrice: () => number;    // Renombrado para claridad
+  getDiscountAmount: () => number;
+  getFinalPrice: () => number;
 }
 
 export const useCartStore = create<CartState>()(
@@ -36,16 +37,13 @@ export const useCartStore = create<CartState>()(
 
       addItem: (product) => {
         const { items } = get();
-        // 1. ¿El producto ya existe en el carrito?
         const productInCart = items.some((item) => item.id === product.id);
 
         if (!productInCart) {
-          // Si no existe, lo agregamos con las propiedades que vienen
           set({ items: [...items, product] });
           return;
         }
 
-        // 2. Si ya existe, solo aumentamos la cantidad +1
         const updatedItems = items.map((item) => {
           if (item.id === product.id) {
             return { ...item, quantity: item.quantity + 1 };
@@ -67,7 +65,6 @@ export const useCartStore = create<CartState>()(
         const { items } = get();
         const updatedItems = items.map((item) => {
           if (item.id === productId) {
-            // Evitamos cantidades negativas o cero
             return { ...item, quantity: Math.max(1, quantity) };
           }
           return item;
@@ -76,7 +73,7 @@ export const useCartStore = create<CartState>()(
       },
 
       clearCart: () => {
-        set({ items: [] });
+        set({ items: [], coupon: null }); // Limpiamos también el cupón
       },
 
       applyCoupon: (coupon) => set({ coupon }),
@@ -87,33 +84,30 @@ export const useCartStore = create<CartState>()(
         return items.reduce((total, item) => total + item.quantity, 0);
       },
 
-      getTotalPrice: () => {
+      // 👇 USAMOS LAS FUNCIONES PURAS Y TESTEADAS
+      getSubtotalPrice: () => {
         const { items } = get();
-        return items.reduce((total, item) => total + item.price * item.quantity, 0);
+        return calculateSubtotal(items);
       },
 
-      // Calcular cuánto se descuenta
       getDiscountAmount: () => {
-        const { coupon } = get();
-        const subtotal = get().getTotalPrice();
-        if (!coupon) return 0;
-
-        if (coupon.type === 'FIXED') return coupon.discount;
-        if (coupon.type === 'PERCENTAGE') return (subtotal * coupon.discount) / 100;
-        return 0;
+        const { items, coupon } = get();
+        const subtotal = calculateSubtotal(items);
+        return calculateDiscount(subtotal, coupon);
       },
 
-      // Precio final a pagar
       getFinalPrice: () => {
-        const subtotal = get().getTotalPrice();
-        const discount = get().getDiscountAmount();
-        return Math.max(0, subtotal - discount);
+        // Nota: El envío se calcula en el componente UI porque depende de la selección del usuario
+        // Aquí devolvemos el total PAGABLE DE PRODUCTOS (Subtotal - Descuento)
+        const { items, coupon } = get();
+        const subtotal = calculateSubtotal(items);
+        const discount = calculateDiscount(subtotal, coupon);
+        return calculateTotal(subtotal, discount, 0);
       },
 
     }),
     {
-      name: 'fiestasya-cart', // Nombre de la llave en localStorage
-      // skipHydration: true, // A veces necesario en Next.js, por ahora probemos sin esto
+      name: 'fiestasya-cart',
     }
   )
 );

@@ -1,8 +1,9 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
 import { CldUploadWidget } from 'next-cloudinary';
 import { Button } from '@/components/ui/button';
-import { ImagePlus, Trash } from 'lucide-react';
+import { ImagePlus, Trash, X } from 'lucide-react';
 import Image from 'next/image';
 
 interface ImageUploadProps {
@@ -13,10 +14,19 @@ interface ImageUploadProps {
 
 export default function ImageUpload({ value, onChange, disabled }: ImageUploadProps) {
   
-  // Manejar subida exitosa
+  // 1. SOLUCIÓN: Usamos useRef para tener siempre el estado "fresco"
+  // Esto evita que el widget use una versión vieja del array al subir varias fotos seguidas
+  const valueRef = useRef(value);
+
+  // Mantenemos el ref sincronizado con el estado real
+  useEffect(() => {
+    valueRef.current = value;
+  }, [value]);
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const onUpload = (result: any) => {
-    onChange([...value, result.info.secure_url]);
+    // Al usar valueRef.current, aseguramos que tomamos TODAS las fotos actuales + la nueva
+    onChange([...valueRef.current, result.info.secure_url]);
   };
 
   const onRemove = (url: string) => {
@@ -25,21 +35,33 @@ export default function ImageUpload({ value, onChange, disabled }: ImageUploadPr
 
   return (
     <div>
-      <div className="mb-4 flex items-center gap-4">
+      {/* Grilla para que las fotos se vean ordenadas */}
+      <div className="mb-4 grid grid-cols-2 gap-4 sm:grid-cols-3">
         {value.map((url) => (
-          <div key={url} className="relative h-[200px] w-[200px] rounded-md overflow-hidden border">
-            <div className="absolute top-2 right-2 z-10">
-              <Button type="button" onClick={() => onRemove(url)} variant="destructive" size="icon">
-                <Trash className="h-4 w-4" />
+          <div key={url} className="relative aspect-square w-full overflow-hidden rounded-md border border-slate-200 group">
+            <div className="absolute top-2 right-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
+              <Button 
+                type="button" 
+                onClick={() => onRemove(url)} 
+                variant="destructive" 
+                size="icon"
+                className="h-6 w-6 shadow-sm"
+              >
+                <X className="h-3 w-3" />
               </Button>
             </div>
-            <Image fill className="object-cover" alt="Image" src={url} />
+            <Image 
+                fill 
+                className="object-cover" 
+                alt="Imagen producto" 
+                src={url} 
+            />
           </div>
         ))}
       </div>
       
       <CldUploadWidget 
-        uploadPreset="fiestasya_preset" // ⚠️ ASEGÚRATE DE CREAR ESTE PRESET EN CLOUDINARY
+        uploadPreset="fiestasya_preset"
         onSuccess={onUpload}
         options={{
             maxFiles: 5,
@@ -53,6 +75,7 @@ export default function ImageUpload({ value, onChange, disabled }: ImageUploadPr
               disabled={disabled}
               variant="secondary"
               onClick={() => open()}
+              className="w-full"
             >
               <ImagePlus className="h-4 w-4 mr-2" />
               Subir Imágenes
