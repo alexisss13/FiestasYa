@@ -6,16 +6,19 @@ import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { AddToCartButton } from './AddToCartButton';
 import { cn } from '@/lib/utils';
+import { Tag, Package } from 'lucide-react';
 
 interface ProductCardProps {
   product: {
     id: string;
     title: string;
     slug: string;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     price: any;
     stock: number;
     images: string[];
     isAvailable: boolean;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     wholesalePrice?: any;
     wholesaleMinCount?: number | null;
     discountPercentage: number;
@@ -27,124 +30,152 @@ interface ProductCardProps {
 
 export function ProductCard({ product }: ProductCardProps) {
   
-  // 1. COLORES SEGÚN TIENDA
+  // 1. LÓGICA DE IDENTIDAD (TIENDAS)
+  // Festamas (Juguetería) = Rojo/Rosa Intenso
+  // FiestasYa (Fiestas) = Fucsia/Morado Vibrante
   const isFestamas = product.division === 'JUGUETERIA';
-  const discountBg = isFestamas ? 'bg-[#fc4b65]' : 'bg-[#ec4899]';
-  const wholesaleText = isFestamas ? 'text-[#fc4b65]' : 'text-[#ec4899]';
-  const wholesaleBorder = isFestamas ? 'border-red-100' : 'border-fuchsia-100';
-  const wholesaleBg = isFestamas ? 'bg-red-50' : 'bg-fuchsia-50';
+  
+  const theme = isFestamas 
+    ? {
+        badge: 'bg-[#fc4b65]', 
+        text: 'text-[#fc4b65]',
+        border: 'group-hover:border-[#fc4b65]/50',
+        wholesaleBg: 'bg-red-50',
+        wholesaleBorder: 'border-red-100',
+        wholesaleText: 'text-red-700',
+        buttonHover: 'hover:bg-[#fc4b65]'
+      }
+    : {
+        badge: 'bg-[#ec4899]',
+        text: 'text-[#ec4899]',
+        border: 'group-hover:border-[#ec4899]/50',
+        wholesaleBg: 'bg-fuchsia-50',
+        wholesaleBorder: 'border-fuchsia-100',
+        wholesaleText: 'text-fuchsia-700',
+        buttonHover: 'hover:bg-[#ec4899]'
+      };
 
   // 2. LÓGICA DE PRECIOS
   const price = Number(product.price) || 0;
   const wholesalePrice = product.wholesalePrice ? Number(product.wholesalePrice) : 0;
   const discount = product.discountPercentage || 0;
-  
   const hasDiscount = discount > 0;
+  
   const finalPrice = hasDiscount ? price * (1 - discount / 100) : price;
   const isOutOfStock = product.stock <= 0;
+  const hasWholesale = wholesalePrice > 0;
 
   return (
-    <Card className="group h-full flex flex-col border border-slate-200 shadow-sm hover:shadow-lg transition-all duration-300 rounded-lg overflow-hidden bg-white">
+    <Card className={cn(
+        "group relative flex flex-col h-full overflow-hidden transition-all duration-300 bg-white border border-slate-200",
+        "hover:shadow-lg hover:-translate-y-1", // Efecto de elevación sutil
+        theme.border
+    )}>
       
-      {/* 1. IMAGEN (Cuadrada y Limpia) */}
-      <div className="relative aspect-square bg-white p-2 overflow-hidden">
+      {/* --- SECCIÓN IMAGEN --- */}
+      <Link href={`/product/${product.slug}`} className="relative block aspect-square overflow-hidden bg-white">
         
-        {/* Badges Superiores */}
-        <div className="absolute top-2 left-2 z-10 flex flex-col gap-1">
-            {hasDiscount && (
-                <Badge className={cn("text-white font-bold text-[10px] px-1.5 h-5 border-0 shadow-sm", discountBg)}>
-                    -{discount}%
-                </Badge>
-            )}
-            {isOutOfStock && (
-                <Badge variant="secondary" className="bg-slate-900 text-white text-[10px] px-1.5 h-5">
+        {/* Badges Flotantes */}
+        <div className="absolute top-2 left-2 z-10 flex flex-col gap-1.5">
+            {isOutOfStock ? (
+                <Badge variant="secondary" className="bg-slate-900 text-white text-[10px] font-bold px-2 h-5 shadow-sm">
                     AGOTADO
+                </Badge>
+            ) : hasDiscount && (
+                <Badge className={cn("text-white font-bold text-[10px] px-2 h-5 border-0 shadow-sm flex items-center gap-1", theme.badge)}>
+                    <Tag className="w-3 h-3" /> -{discount}%
                 </Badge>
             )}
         </div>
 
-        <Link href={`/product/${product.slug}`} className="block h-full w-full">
-            {product.images[0] ? (
-                <Image
-                    src={product.images[0]}
-                    alt={product.title}
-                    fill
-                    className={cn(
-                        "object-contain mix-blend-multiply transition-transform duration-500 group-hover:scale-105",
-                        isOutOfStock && "opacity-50 grayscale"
-                    )}
-                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                />
-            ) : (
-                <div className="flex h-full w-full items-center justify-center bg-slate-50 text-slate-300 text-xs">
-                    Sin Foto
-                </div>
-            )}
-        </Link>
-      </div>
+        {/* Imagen del Producto */}
+        {product.images[0] ? (
+            <Image
+                src={product.images[0]}
+                alt={product.title}
+                fill
+                className={cn(
+                    "object-contain p-4 transition-transform duration-500 group-hover:scale-105 mix-blend-multiply",
+                    isOutOfStock && "opacity-60 grayscale"
+                )}
+                sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 20vw"
+            />
+        ) : (
+            <div className="flex h-full w-full items-center justify-center bg-slate-50 text-slate-300">
+                <Package className="w-10 h-10 opacity-20" />
+            </div>
+        )}
+      </Link>
 
-      {/* 2. CONTENIDO (Compacto) */}
-      <CardContent className="p-3 flex-1 flex flex-col gap-1.5">
+      {/* --- SECCIÓN CONTENIDO --- */}
+      <CardContent className="flex flex-col flex-1 p-3 gap-2">
         
-        {/* Marca/Tienda */}
-        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">
-            {isFestamas ? 'FESTAMAS' : 'FIESTASYA'}
-        </span>
+        {/* Marca Pequeña */}
+        <div className="flex items-center justify-between">
+            <span className={cn("text-[9px] font-extrabold uppercase tracking-widest opacity-80", theme.text)}>
+                {isFestamas ? 'Festamas' : 'FiestasYa'}
+            </span>
+            {/* Stock bajo alerta (Opcional) */}
+            {!isOutOfStock && product.stock < 5 && (
+                <span className="text-[9px] text-orange-500 font-medium">
+                    ¡Quedan {product.stock}!
+                </span>
+            )}
+        </div>
 
-        {/* Título */}
-        <Link href={`/product/${product.slug}`} className="mb-1">
-            <h3 className="text-xs sm:text-sm font-medium text-slate-700 leading-tight line-clamp-2 h-[2.4em] group-hover:text-black transition-colors" title={product.title}>
+        {/* Título (Truncado a 2 líneas) */}
+        <Link href={`/product/${product.slug}`} title={product.title}>
+            <h3 className="text-xs sm:text-sm font-medium text-slate-700 leading-tight line-clamp-2 h-[2.5em] group-hover:text-black transition-colors">
                 {product.title}
             </h3>
         </Link>
 
-        {/* Precios */}
-        <div className="mt-auto">
-            {/* Precio Anterior Tachado */}
-            {hasDiscount && (
-                <div className="text-[10px] text-slate-400 line-through mb-0.5">
-                    S/ {price.toFixed(2)}
-                </div>
-            )}
-            
-            {/* Precio Actual Gigante */}
-            <div className={cn("text-lg font-bold leading-none", hasDiscount ? "text-red-600" : "text-slate-900")}>
-                S/ {finalPrice.toFixed(2)}
+        {/* Bloque de Precios */}
+        <div className="mt-auto pt-1">
+            <div className="flex items-end gap-2 flex-wrap">
+                {/* Precio Final (Héroe) */}
+                <span className="text-lg font-bold text-slate-900 leading-none">
+                    S/ {finalPrice.toFixed(2)}
+                </span>
+
+                {/* Precio Anterior (Tachado) */}
+                {hasDiscount && (
+                    <span className="text-xs text-slate-400 line-through mb-[2px]">
+                        S/ {price.toFixed(2)}
+                    </span>
+                )}
             </div>
 
-            {/* Oportunidad Mayorista */}
-            {wholesalePrice > 0 && (
-                <div className={cn("mt-2 flex items-center justify-between rounded border px-2 py-1", wholesaleBg, wholesaleBorder)}>
+            {/* Bloque Mayorista (Estilo Compacto) */}
+            {hasWholesale && !isOutOfStock && (
+                 <div className={cn("mt-2 flex items-center justify-between rounded px-2 py-1.5 border", theme.wholesaleBg, theme.wholesaleBorder)}>
                     <div className="flex flex-col leading-none">
-                        <span className={cn("text-[9px] font-bold uppercase", wholesaleText)}>
-                            x Mayor
+                        <span className={cn("text-[9px] font-bold uppercase mb-0.5", theme.wholesaleText)}>
+                            Mayorista
                         </span>
                         <span className="text-xs font-bold text-slate-900">
                             S/ {wholesalePrice.toFixed(2)}
                         </span>
                     </div>
-                    <div className="bg-white/60 px-1 rounded text-[9px] font-bold text-slate-600">
-                        Min {product.wholesaleMinCount || 3}
+                    <div className="text-[9px] font-semibold text-slate-600 bg-white/50 px-1.5 py-0.5 rounded">
+                        Min. {product.wholesaleMinCount || 3} un.
                     </div>
                 </div>
             )}
         </div>
       </CardContent>
 
-      {/* 3. BOTÓN */}
+      {/* --- BOTÓN DE ACCIÓN --- */}
       <CardFooter className="p-3 pt-0">
-        <div className="w-full">
-            <AddToCartButton 
-                product={product as any} 
-                disabled={isOutOfStock}
-                className={cn(
-                    "w-full h-9 text-xs font-bold shadow-none transition-colors",
-                    isFestamas 
-                        ? "bg-slate-900 hover:bg-[#fc4b65]" 
-                        : "bg-slate-900 hover:bg-[#ec4899]"
-                )}
-            />
-        </div>
+        <AddToCartButton 
+            product={product as any} 
+            disabled={isOutOfStock}
+            className={cn(
+                "w-full h-9 text-xs font-bold shadow-none transition-all",
+                "bg-slate-900 text-white",
+                theme.buttonHover
+            )}
+        />
       </CardFooter>
     </Card>
   );

@@ -14,20 +14,31 @@ import {
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { useCartStore } from '@/store/cart';
+import { useEffect, useState } from 'react';
 
 interface Props {
   children: React.ReactNode; 
 }
 
 export function CartSidebar({ children }: Props) {
-  // ⚠️ CAMBIO AQUÍ: Usamos getSubtotalPrice en lugar de getTotalPrice
-  const { items, removeItem, updateQuantity, getSubtotalPrice } = useCartStore();
+  // Obtenemos el estado y acciones con los nombres NUEVOS
+  const { cart, removeProduct, updateProductQuantity, getSubtotalPrice } = useCartStore();
+  
+  // Hydration fix simple: esperar a que monte el componente
+  const [loaded, setLoaded] = useState(false);
+  useEffect(() => setLoaded(true), []);
 
   const formatPrice = (value: number) =>
     new Intl.NumberFormat('es-PE', {
       style: 'currency',
       currency: 'PEN',
     }).format(value);
+
+  // Protección: Si no ha cargado o cart es undefined, mostramos vacío seguro
+  const items = cart || [];
+  const subTotal = getSubtotalPrice ? getSubtotalPrice() : 0;
+
+  if (!loaded) return <>{children}</>; // Renderiza solo el trigger hasta que cargue el cliente
 
   return (
     <Sheet>
@@ -54,7 +65,6 @@ export function CartSidebar({ children }: Props) {
           </div>
         ) : (
           <>
-            {/* LISTA DE ITEMS */}
             <div className="flex-1 overflow-y-auto pr-6">
               <div className="flex flex-col gap-5 py-4">
                 {items.map((item) => (
@@ -88,12 +98,12 @@ export function CartSidebar({ children }: Props) {
                         <div className="flex items-center gap-2 rounded-md border p-1 h-8">
                             <Button variant="ghost" size="icon" className="h-5 w-5" 
                                 disabled={item.quantity <= 1}
-                                onClick={() => updateQuantity(item.id, item.quantity - 1)}>
+                                onClick={() => updateProductQuantity(item.id, item.quantity - 1)}>
                                 <Minus className="h-3 w-3" />
                             </Button>
                             <span className="text-xs w-4 text-center">{item.quantity}</span>
                             <Button variant="ghost" size="icon" className="h-5 w-5" 
-                                onClick={() => updateQuantity(item.id, item.quantity + 1)}>
+                                onClick={() => updateProductQuantity(item.id, item.quantity + 1)}>
                                 <Plus className="h-3 w-3" />
                             </Button>
                         </div>
@@ -102,7 +112,7 @@ export function CartSidebar({ children }: Props) {
                           variant="ghost"
                           size="sm"
                           className="h-auto p-0 text-red-500 hover:bg-transparent hover:text-red-600"
-                          onClick={() => removeItem(item.id)}
+                          onClick={() => removeProduct(item.id)}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -113,13 +123,11 @@ export function CartSidebar({ children }: Props) {
               </div>
             </div>
 
-            {/* FOOTER */}
             <div className="pr-6 pt-4 pb-6">
               <Separator className="my-4" />
               <div className="mb-4 flex justify-between text-base font-medium text-slate-900">
                 <p>Subtotal</p>
-                {/* ⚠️ CAMBIO AQUÍ: Llamada a la función correcta */}
-                <p>{formatPrice(getSubtotalPrice())}</p>
+                <p>{formatPrice(subTotal)}</p>
               </div>
               <p className="mt-0.5 mb-4 text-sm text-slate-500">
                 El envío se calcula al coordinar.

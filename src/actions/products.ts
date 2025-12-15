@@ -1,10 +1,11 @@
 'use server';
 
 import prisma from '@/lib/prisma';
-import { Prisma, Division } from '@prisma/client'; // 👈 Importamos Division
+import { Prisma, Division } from '@prisma/client';
 import { revalidatePath, revalidateTag } from 'next/cache';
 import { unstable_cache } from 'next/cache';
 
+// Tipado fuerte para asegurar que el frontend reciba lo que espera
 export type ProductWithCategory = {
   id: string;
   title: string;
@@ -13,6 +14,12 @@ export type ProductWithCategory = {
   stock: number;
   images: string[];
   isAvailable: boolean;
+  wholesalePrice: number;     
+  wholesaleMinCount: number | null; 
+  discountPercentage: number; 
+  tags: string[];             
+  division: Division;         
+  createdAt: Date;
   category: {
     name: string;
     slug: string;
@@ -28,12 +35,14 @@ const getOrderBy = (sort: string): Prisma.ProductOrderByWithRelationInput => {
     }
 };
 
-// --- VERSIÓN CACHEADA ---
+// =====================================================================
+// 1. GET PRODUCTS (Catálogo General con Filtros)
+// =====================================================================
 const getCachedProducts = unstable_cache(
   async (includeInactive: boolean, query: string, sort: string, division: Division) => {
     const whereClause: Prisma.ProductWhereInput = {};
 
-    // 1. Filtro por División (OBLIGATORIO)
+    // Filtro por División (OBLIGATORIO)
     whereClause.division = division;
 
     if (!includeInactive) {
@@ -44,6 +53,7 @@ const getCachedProducts = unstable_cache(
       whereClause.OR = [
         { title: { contains: query, mode: 'insensitive' } },
         { description: { contains: query, mode: 'insensitive' } },
+        { tags: { has: query } }
       ];
     }
 
@@ -53,6 +63,7 @@ const getCachedProducts = unstable_cache(
       orderBy: getOrderBy(sort),
     });
 
+    // Mapeo completo
     return products.map((product) => ({
       id: product.id,
       title: product.title,
@@ -61,6 +72,12 @@ const getCachedProducts = unstable_cache(
       stock: product.stock,
       images: product.images,
       isAvailable: product.isAvailable,
+      wholesalePrice: product.wholesalePrice ? Number(product.wholesalePrice) : 0,
+      wholesaleMinCount: product.wholesaleMinCount,
+      discountPercentage: product.discountPercentage,
+      tags: product.tags,
+      division: product.division,
+      createdAt: product.createdAt,
       category: {
         name: product.category.name,
         slug: product.category.slug,
@@ -70,23 +87,28 @@ const getCachedProducts = unstable_cache(
   ['get-products-cache'], 
   {
     tags: ['products'], 
-    revalidate: 3600 
+    revalidate: 3600
   }
 );
 
-// --- SERVER ACTION PÚBLICO ---
+interface GetProductsOptions {
+    includeInactive?: boolean;
+    query?: string;
+    sort?: string;
+    division?: Division;
+}
+
 export async function getProducts({ 
   includeInactive = false, 
   query = '', 
   sort = 'newest',
-  division = 'JUGUETERIA' as Division // 👈 Default: Juguetería
-} = {}) {
+  division = 'JUGUETERIA'
+}: GetProductsOptions = {}) {
   try {
     if (includeInactive) {
-       // Versión Admin (Sin caché, pero con filtro de división opcional si quisieras)
-       // Por ahora el admin ve TODO, pero podríamos filtrarlo también.
-       // Dejamos que el admin vea todo el inventario mezclado por ahora en la lista general.
+       // Modo Admin: Sin caché estricto
        const products = await prisma.product.findMany({
+         where: division ? { division } : undefined,
          orderBy: getOrderBy(sort),
          include: { category: true }
        });
@@ -94,12 +116,13 @@ export async function getProducts({
        const data = products.map(p => ({
          ...p,
          price: Number(p.price),
+         wholesalePrice: p.wholesalePrice ? Number(p.wholesalePrice) : 0,
          category: { name: p.category.name, slug: p.category.slug }
        }));
        return { success: true, data };
     }
 
-    // Versión Tienda (Filtrada por división)
+    // Modo Tienda: Usamos la versión cacheada
     const cachedData = await getCachedProducts(includeInactive, query, sort, division);
     
     return {
@@ -116,42 +139,38 @@ export async function getProducts({
   }
 }
 
+// =====================================================================
+// 2. GET PRODUCT (Detalle Individual) - Renombrado a "getProduct"
+// =====================================================================
 export const getProduct = unstable_cache(
   async (slug: string) => {
     try {
       const product = await prisma.product.findFirst({
-        where: { slug: slug, isAvailable: true },
+        where: { slug: slug, isAvailable: true }, // Usamos findFirst x seguridad
         include: { category: true },
       });
 
       if (!product) return null;
 
       return {
-        id: product.id,
-        title: product.title,
-        description: product.description,
-        slug: product.slug,
+        ...product,
         price: Number(product.price),
-        stock: product.stock,
-        images: product.images,
-        isAvailable: product.isAvailable,
-        category: {
-          name: product.category.name,
-          slug: product.category.slug,
-        },
-        color: product.color,
-        groupTag: product.groupTag,
-        division: product.division // 👈 Retornamos la división para saber dónde estamos
+        wholesalePrice: product.wholesalePrice ? Number(product.wholesalePrice) : 0,
+        discountPercentage: product.discountPercentage,
+        // Aseguramos que pasen todos los campos necesarios
       };
     } catch (error) {
       console.log(error);
       return null;
     }
   },
-  ['get-single-product'], 
+  ['get-single-product'],
   { tags: ['products'] }
 );
 
+// =====================================================================
+// 3. GET PRODUCTS BY CATEGORY (¡RESTITUIDA!)
+// =====================================================================
 export const getProductsByCategory = unstable_cache(
   async (categorySlug: string, sort = 'newest') => {
     try {
@@ -161,14 +180,13 @@ export const getProductsByCategory = unstable_cache(
 
       if (!category) return null;
 
-      // Al filtrar por categoría, implícitamente filtramos por división
-      // porque la categoría pertenece a una división.
       const products = await prisma.product.findMany({
         where: { categoryId: category.id, isAvailable: true },
         include: { category: true },
         orderBy: getOrderBy(sort),
       });
 
+      // Mapeo CRÍTICO: Incluir division y precios para que las Cards funcionen
       const cleanProducts = products.map((product) => ({
         id: product.id,
         title: product.title,
@@ -177,6 +195,15 @@ export const getProductsByCategory = unstable_cache(
         stock: product.stock,
         images: product.images,
         isAvailable: product.isAvailable,
+        
+        // Datos vitales para el nuevo diseño de tarjeta
+        wholesalePrice: product.wholesalePrice ? Number(product.wholesalePrice) : 0,
+        wholesaleMinCount: product.wholesaleMinCount,
+        discountPercentage: product.discountPercentage,
+        tags: product.tags,
+        division: product.division,
+        createdAt: product.createdAt,
+
         category: {
           name: product.category.name,
           slug: product.category.slug,
@@ -186,7 +213,7 @@ export const getProductsByCategory = unstable_cache(
       return {
         categoryName: category.name,
         products: cleanProducts,
-        division: category.division // 👈 Útil para el frontend
+        division: category.division 
       };
     } catch (error) {
       console.log(error);
@@ -197,18 +224,20 @@ export const getProductsByCategory = unstable_cache(
   { tags: ['products', 'categories'] }
 );
 
+// =====================================================================
+// 4. DELETE PRODUCT (Admin)
+// =====================================================================
 export async function deleteProduct(id: string) {
   try {
     await prisma.product.update({
       where: { id },
       data: { 
         isAvailable: false,
-        slug: `${id}-deleted`, 
+        slug: `${id}-deleted-${Date.now()}`, 
       },
     });
     
-    revalidateTag('products', 'default'); 
-    
+    revalidateTag('products'); 
     revalidatePath('/admin/products');
     revalidatePath('/');
     

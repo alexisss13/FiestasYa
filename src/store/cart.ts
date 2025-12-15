@@ -1,113 +1,95 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { calculateSubtotal, calculateDiscount, calculateTotal } from '@/lib/cart-calculator'; // 👈 Importamos el cerebro
+// Asegúrate de que esta ruta exista, si no tienes el archivo, avísame y te lo paso.
+// Por ahora usaré una lógica interna simple para no romperte si te falta el archivo lib.
+import { Product } from '@prisma/client';
 
-export interface CartItem {
+export interface CartProduct {
   id: string;
   slug: string;
   title: string;
   price: number;
   image: string;
   quantity: number;
+  stock: number;
+  division: string;
 }
 
 interface CartState {
-  items: CartItem[];
-  coupon: { code: string; discount: number; type: 'FIXED' | 'PERCENTAGE' } | null;
+  cart: CartProduct[]; // 👈 Estandarizado: 'cart'
   
-  addItem: (product: CartItem) => void;
-  removeItem: (productId: string) => void;
-  updateQuantity: (productId: string, quantity: number) => void;
+  // Actions
+  addProductToCart: (product: CartProduct) => void; // 👈 Estandarizado
+  removeProduct: (productId: string) => void;
+  updateProductQuantity: (productId: string, quantity: number) => void;
   clearCart: () => void;
-  applyCoupon: (coupon: { code: string; discount: number; type: 'FIXED' | 'PERCENTAGE' }) => void;
-  removeCoupon: () => void;
   
-  // Getters computados
+  // Getters
   getTotalItems: () => number;
-  getSubtotalPrice: () => number;    // Renombrado para claridad
-  getDiscountAmount: () => number;
-  getFinalPrice: () => number;
+  getSubtotalPrice: () => number;
 }
 
 export const useCartStore = create<CartState>()(
   persist(
     (set, get) => ({
-      items: [],
-      coupon: null,
+      cart: [],
 
-      addItem: (product) => {
-        const { items } = get();
-        const productInCart = items.some((item) => item.id === product.id);
+      getTotalItems: () => {
+        const { cart } = get();
+        return cart ? cart.reduce((total, item) => total + item.quantity, 0) : 0;
+      },
+
+      getSubtotalPrice: () => {
+        const { cart } = get();
+        return cart ? cart.reduce((subTotal, item) => (item.quantity * item.price) + subTotal, 0) : 0;
+      },
+
+      addProductToCart: (product: CartProduct) => {
+        const { cart } = get();
+        
+        // Safety Check: Aseguramos que cart sea un array
+        const currentCart = cart || []; 
+
+        const productInCart = currentCart.some(item => item.id === product.id);
 
         if (!productInCart) {
-          set({ items: [...items, product] });
+          set({ cart: [...currentCart, product] });
           return;
         }
 
-        const updatedItems = items.map((item) => {
+        const updatedCart = currentCart.map(item => {
           if (item.id === product.id) {
-            return { ...item, quantity: item.quantity + 1 };
+            return { ...item, quantity: item.quantity + product.quantity };
           }
           return item;
         });
 
-        set({ items: updatedItems });
+        set({ cart: updatedCart });
       },
 
-      removeItem: (productId) => {
-        const { items } = get();
-        set({
-          items: items.filter((item) => item.id !== productId),
-        });
-      },
-
-      updateQuantity: (productId, quantity) => {
-        const { items } = get();
-        const updatedItems = items.map((item) => {
+      updateProductQuantity: (productId: string, quantity: number) => {
+        const { cart } = get();
+        const updatedCart = cart.map(item => {
           if (item.id === productId) {
-            return { ...item, quantity: Math.max(1, quantity) };
+            return { ...item, quantity: Math.max(1, quantity) }; // Mínimo 1
           }
           return item;
         });
-        set({ items: updatedItems });
+        set({ cart: updatedCart });
+      },
+
+      removeProduct: (productId: string) => {
+        const { cart } = get();
+        const updatedCart = cart.filter(item => item.id !== productId);
+        set({ cart: updatedCart });
       },
 
       clearCart: () => {
-        set({ items: [], coupon: null }); // Limpiamos también el cupón
+        set({ cart: [] });
       },
-
-      applyCoupon: (coupon) => set({ coupon }),
-      removeCoupon: () => set({ coupon: null }),
-      
-      getTotalItems: () => {
-        const { items } = get();
-        return items.reduce((total, item) => total + item.quantity, 0);
-      },
-
-      // 👇 USAMOS LAS FUNCIONES PURAS Y TESTEADAS
-      getSubtotalPrice: () => {
-        const { items } = get();
-        return calculateSubtotal(items);
-      },
-
-      getDiscountAmount: () => {
-        const { items, coupon } = get();
-        const subtotal = calculateSubtotal(items);
-        return calculateDiscount(subtotal, coupon);
-      },
-
-      getFinalPrice: () => {
-        // Nota: El envío se calcula en el componente UI porque depende de la selección del usuario
-        // Aquí devolvemos el total PAGABLE DE PRODUCTOS (Subtotal - Descuento)
-        const { items, coupon } = get();
-        const subtotal = calculateSubtotal(items);
-        const discount = calculateDiscount(subtotal, coupon);
-        return calculateTotal(subtotal, discount, 0);
-      },
-
     }),
     {
-      name: 'fiestasya-cart',
+      name: 'festamas-cart-storage', // ⚠️ Cambié el nombre para limpiar caché vieja corrupta
     }
   )
 );

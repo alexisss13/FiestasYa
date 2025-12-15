@@ -6,27 +6,35 @@ import { PackageOpen } from 'lucide-react';
 
 interface Props {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  products: any[]; // Usamos any para evitar conflictos con Decimal de Prisma
+  products: any[]; 
 }
 
 export function ProductGrid({ products }: Props) {
   const { currentDivision } = useUIStore();
 
-  // 🛡️ FILTRO MAESTRO: Solo dejamos pasar los productos de la tienda actual
-  // Asegúrate que en tu BD la división sea exactamente 'JUGUETERIA' o 'FIESTAS'
+  // 🛡️ FILTRO: Solo mostramos productos de la tienda activa
   const displayProducts = products.filter(p => p.division === currentDivision);
 
   if (displayProducts.length === 0) {
     return (
-      <div className="col-span-full py-20 flex flex-col items-center justify-center text-slate-400">
-        <PackageOpen className="w-16 h-16 mb-4 opacity-50" />
-        <p className="text-lg font-medium">No hay productos en esta sección.</p>
-        <p className="text-sm">Prueba cambiando de tienda o categoría.</p>
+      <div className="col-span-full py-32 flex flex-col items-center justify-center text-slate-400 animate-in fade-in zoom-in duration-500">
+        <div className="bg-slate-100 p-6 rounded-full mb-4">
+            <PackageOpen className="w-12 h-12 opacity-50 text-slate-500" />
+        </div>
+        <h3 className="text-lg font-semibold text-slate-700">Sin resultados por aquí</h3>
+        <p className="text-sm text-slate-500 max-w-xs text-center mt-1">
+            Parece que no hay productos en esta sección. Prueba cambiando de categoría o tienda.
+        </p>
       </div>
     );
   }
 
   return (
+    // GRID RESPONSIVO OPTIMIZADO:
+    // Mobile: 2 columnas (standard actual)
+    // Tablet: 3 columnas
+    // Desktop: 4 columnas
+    // Wide: 5 columnas
     <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
       {displayProducts.map((product) => (
         <ProductCard key={product.id} product={product} />
