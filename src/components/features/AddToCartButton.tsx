@@ -2,7 +2,7 @@
 
 import { useCartStore, CartProduct } from '@/store/cart';
 import { Product } from '@prisma/client';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/ui/button'; // Importa el botón actualizado
 import { ShoppingCart, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState, useEffect } from 'react';
@@ -17,18 +17,12 @@ interface Props {
 export function AddToCartButton({ product, disabled, className }: Props) {
   const addProductToCart = useCartStore(state => state.addProductToCart);
   const [added, setAdded] = useState(false);
-  
-  // Hidratación segura
   const [mounted, setMounted] = useState(false);
+  
   useEffect(() => setMounted(true), []);
 
-  // Lógica de División
-  const isFestamas = product.division === 'JUGUETERIA';
-
-  // 🧠 SELECCIÓN DE VARIANTE:
-  // Aquí elegimos qué variante del Button usar. 
-  // Al pasarle 'festamas' o 'fiestasya', el Button usará el CSS que definimos en el Paso 1.
-  const brandVariant = isFestamas ? 'festamas' : 'fiestasya';
+  // Lógica simple: Si es Juguetería -> festamas, Si no -> fiestasya
+  const brandVariant = product.division === 'JUGUETERIA' ? 'festamas' : 'fiestasya';
 
   const handleAddToCart = () => {
     const cartProduct: CartProduct = {
@@ -43,31 +37,23 @@ export function AddToCartButton({ product, disabled, className }: Props) {
     };
 
     addProductToCart(cartProduct);
-    
     setAdded(true);
     toast.success(`${product.title} agregado`);
     setTimeout(() => setAdded(false), 2000);
   };
 
   if (!mounted) {
-    return (
-        <Button disabled variant="secondary" className="w-full">
-            Cargando...
-        </Button>
-    );
+    return <Button disabled variant="secondary" className="w-full">Cargando...</Button>;
   }
 
   return (
     <Button 
       onClick={handleAddToCart}
       disabled={disabled}
-      // 👇 IMPORTANTE: Aquí aplicamos la variante.
-      // @ts-ignore (Ignora el error de tipado si TS tarda en leer el cambio en button.tsx)
-      variant={brandVariant}
-      className={cn(
-        "w-full font-bold transition-all duration-200", 
-        className 
-      )} 
+      // ⚠️ AQUÍ USAMOS LA VARIANTE NUEVA
+      // @ts-ignore (Ignora el error de TS momentáneo)
+      variant={brandVariant} 
+      className={cn("w-full font-bold transition-all duration-200", className)} 
     >
       {added ? (
         <span className="flex items-center animate-in fade-in zoom-in duration-300">

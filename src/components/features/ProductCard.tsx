@@ -33,7 +33,8 @@ export function ProductCard({ product }: ProductCardProps) {
   // 1. LÓGICA DE IDENTIDAD (TIENDAS)
   // Festamas (Juguetería) = Rojo/Rosa Intenso
   // FiestasYa (Fiestas) = Fucsia/Morado Vibrante
-  const isFestamas = product.division === 'JUGUETERIA';
+  // Nota: Si 'division' viene nulo, asumimos Juguetería por seguridad
+  const isFestamas = product.division === 'JUGUETERIA' || !product.division;
   
   const theme = isFestamas 
     ? {
@@ -43,16 +44,15 @@ export function ProductCard({ product }: ProductCardProps) {
         wholesaleBg: 'bg-red-50',
         wholesaleBorder: 'border-red-100',
         wholesaleText: 'text-red-700',
-        buttonHover: 'hover:bg-[#fc4b65]'
+        // Ya no necesitamos buttonHover aquí, el botón sabe cuidarse solo
       }
     : {
-        badge: 'bg-[#ec4899]',
-        text: 'text-[#ec4899]',
-        border: 'group-hover:border-[#ec4899]/50',
+        badge: 'bg-[#fb3099]', // Ajustado al color exacto de FiestasYa
+        text: 'text-[#fb3099]',
+        border: 'group-hover:border-[#fb3099]/50',
         wholesaleBg: 'bg-fuchsia-50',
         wholesaleBorder: 'border-fuchsia-100',
         wholesaleText: 'text-fuchsia-700',
-        buttonHover: 'hover:bg-[#ec4899]'
       };
 
   // 2. LÓGICA DE PRECIOS
@@ -115,7 +115,7 @@ export function ProductCard({ product }: ProductCardProps) {
             <span className={cn("text-[9px] font-extrabold uppercase tracking-widest opacity-80", theme.text)}>
                 {isFestamas ? 'Festamas' : 'FiestasYa'}
             </span>
-            {/* Stock bajo alerta (Opcional) */}
+            {/* Stock bajo alerta */}
             {!isOutOfStock && product.stock < 5 && (
                 <span className="text-[9px] text-orange-500 font-medium">
                     ¡Quedan {product.stock}!
@@ -170,11 +170,9 @@ export function ProductCard({ product }: ProductCardProps) {
         <AddToCartButton 
             product={product as any} 
             disabled={isOutOfStock}
-            className={cn(
-                "w-full h-9 text-xs font-bold shadow-none transition-all",
-                "bg-slate-900 text-white",
-                theme.buttonHover
-            )}
+            // ⚠️ FIX: Quitamos 'bg-slate-900' para que se use el color de la variante (Rosa/Fucsia)
+            // Mantenemos solo estilos de layout y tipografía
+            className="w-full h-9 text-xs font-bold shadow-none transition-transform active:scale-95"
         />
       </CardFooter>
     </Card>
