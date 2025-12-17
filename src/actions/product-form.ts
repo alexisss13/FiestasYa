@@ -10,7 +10,16 @@ export async function createOrUpdateProduct(formData: FormData, id?: string) {
   // FIX: Obtenemos todas las imágenes, filtramos strings vacíos
   const images = formData.getAll('images').filter(img => typeof img === 'string' && img.length > 0) as string[];
 
-  // Preparar objeto crudo
+  // 🧹 SANITIZACIÓN DE DATOS (NUEVO)
+  // Convertimos groupTag a Mayúsculas y quitamos espacios para asegurar coincidencia
+  const rawGroupTag = data.groupTag?.toString().trim().toUpperCase();
+  const groupTag = rawGroupTag && rawGroupTag.length > 0 ? rawGroupTag : null;
+
+  // Limpiamos el color
+  const rawColor = data.color?.toString().trim();
+  const color = rawColor && rawColor.length > 0 ? rawColor : null;
+
+  // Preparar objeto crudo para Zod
   const rawData = {
     ...data,
     images: images,
@@ -22,22 +31,24 @@ export async function createOrUpdateProduct(formData: FormData, id?: string) {
     discountPercentage: data.discountPercentage === '' ? 0 : data.discountPercentage,
     wholesalePrice: data.wholesalePrice === '' ? null : data.wholesalePrice,
     wholesaleMinCount: data.wholesaleMinCount === '' ? null : data.wholesaleMinCount,
+    
+    // Inyectamos los valores limpios
+    groupTag: groupTag ?? undefined, // undefined para que Zod lo tome como opcional si es null
+    color: color ?? undefined,
   };
 
   const parsed = productSchema.safeParse(rawData);
 
   if (!parsed.success) {
-    // Log para ver qué falló si es necesario
-    // console.error(parsed.error.format());
     return { success: false, error: parsed.error.issues[0].message };
   }
 
   const { 
     title, slug, description, price, stock, categoryId, isAvailable, 
-    color, groupTag, division, wholesalePrice, wholesaleMinCount, discountPercentage, tags 
+    division, wholesalePrice, wholesaleMinCount, discountPercentage, tags 
   } = parsed.data;
 
-  // FIX: Procesar tags correctamente
+  // FIX: Procesar tags de búsqueda correctamente
   const tagsArray = tags 
     ? tags.split(',').map(t => t.trim().toLowerCase()).filter(t => t !== '')
     : [];
@@ -50,13 +61,13 @@ export async function createOrUpdateProduct(formData: FormData, id?: string) {
       price,
       stock,
       categoryId,
-      images: images, // Usamos el array procesado
+      images,
       isAvailable,
-      color,
-      groupTag,
+      color,      // Valor limpio (puede ser null)
+      groupTag,   // Valor limpio (puede ser null)
       division,
-      wholesalePrice: wholesalePrice || null,
-      wholesaleMinCount: wholesaleMinCount || null,
+      wholesalePrice,
+      wholesaleMinCount,
       discountPercentage,
       tags: tagsArray
     };

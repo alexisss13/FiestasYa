@@ -7,25 +7,32 @@ import { Category, Division } from '@prisma/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, Save, ArrowLeft, Image as ImageIcon } from 'lucide-react';
+import { Loader2, Save, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
-// 👇 Importamos tu componente de imágenes
 import ImageUpload from '@/components/ui/image-upload'; 
+import { cn } from '@/lib/utils';
 
 interface Props {
   category?: Category | null;
+  defaultDivision?: Division;
 }
 
-export function CategoryForm({ category }: Props) {
+export function CategoryForm({ category, defaultDivision = 'JUGUETERIA' }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   
-  // Estado inicial
   const [name, setName] = useState(category?.name || '');
   const [slug, setSlug] = useState(category?.slug || '');
-  const [division, setDivision] = useState<Division>(category?.division || 'JUGUETERIA');
-  const [image, setImage] = useState(category?.image || ''); // 👈 Estado para la imagen
+  const [image, setImage] = useState(category?.image || '');
+  
+  // Usamos la prop defaultDivision o la de la categoría existente
+  const currentDivision = category?.division || defaultDivision;
+  const isFestamas = currentDivision === 'JUGUETERIA';
+
+  // Clases dinámicas
+  const brandFocusClass = isFestamas ? "focus-visible:ring-festamas-primary" : "focus-visible:ring-fiestasya-accent";
+  const brandTextClass = isFestamas ? "text-festamas-primary" : "text-fiestasya-accent";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,8 +41,9 @@ export function CategoryForm({ category }: Props) {
     const formData = new FormData();
     formData.append('name', name);
     formData.append('slug', slug);
-    formData.append('division', division);
-    formData.append('image', image); // 👈 Enviamos la imagen
+    formData.append('image', image);
+    // 👇 Inyección silenciosa
+    formData.append('division', currentDivision);
 
     const result = category 
       ? await updateCategory(category.id, formData)
@@ -51,84 +59,88 @@ export function CategoryForm({ category }: Props) {
     setLoading(false);
   };
 
-  // Generar slug automático al escribir el nombre
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setName(val);
-    if (!category) { // Solo auto-generar si es nuevo
+    if (!category) { 
         setSlug(val.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, ''));
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="max-w-2xl bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+    <form onSubmit={handleSubmit} className="w-full max-w-[1200px] space-y-8 pb-20">
       
-      <div className="space-y-6">
+      {/* HEADER */}
+      <div className="flex items-center justify-between border-b border-slate-200 pb-6">
+        <div>
+            <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+                {category ? 'Editar Categoría' : 'Nueva Categoría'}
+                <span className={cn("text-xs px-2 py-1 rounded-md bg-slate-100 uppercase font-extrabold tracking-wide", brandTextClass)}>
+                    {isFestamas ? 'Festamas' : 'FiestasYa'}
+                </span>
+            </h2>
+        </div>
+        <div className="flex gap-3">
+            <Button type="button" variant="outline" asChild disabled={loading}>
+                <Link href="/admin/categories">Cancelar</Link>
+            </Button>
+            <Button 
+                type="submit" 
+                className={cn("text-white min-w-[140px]", isFestamas ? "bg-festamas-primary hover:bg-festamas-primary/90" : "bg-fiestasya-accent hover:bg-fiestasya-accent/90")}
+                disabled={loading}
+            >
+                {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                Guardar
+            </Button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         
-        {/* IMAGEN DE LA CATEGORÍA (NUEVO) */}
-        <div className="space-y-2">
-            <Label>Imagen de Portada (Opcional)</Label>
+        {/* COLUMNA IZQUIERDA (Información) */}
+        <div className="lg:col-span-8 bg-white p-6 rounded-xl border border-slate-200 shadow-sm h-fit">
+            <h3 className="font-bold text-base text-slate-900 mb-6 border-b pb-2">Datos Generales</h3>
+            <div className="space-y-6">
+                <div className="space-y-2">
+                    <Label htmlFor="name">Nombre de la Categoría</Label>
+                    <Input 
+                        id="name" 
+                        placeholder="Ej. Bloques de Construcción" 
+                        value={name}
+                        onChange={handleNameChange}
+                        required
+                        className={brandFocusClass}
+                    />
+                </div>
+
+                <div className="space-y-2">
+                    <Label htmlFor="slug">Slug (URL Amigable)</Label>
+                    <Input 
+                        id="slug" 
+                        placeholder="bloques-construccion" 
+                        value={slug}
+                        onChange={(e) => setSlug(e.target.value)}
+                        required
+                        className="bg-slate-50 font-mono text-sm"
+                    />
+                </div>
+            </div>
+        </div>
+
+        {/* COLUMNA DERECHA (Imagen) */}
+        <div className="lg:col-span-4 bg-white p-6 rounded-xl border border-slate-200 shadow-sm h-fit">
+            <h3 className="font-bold text-base text-slate-900 mb-4">Imagen de Portada</h3>
             <div className="bg-slate-50 p-4 rounded-lg border border-dashed border-slate-300">
                 <ImageUpload 
                     value={image ? [image] : []}
                     disabled={loading}
                     onChange={(urlArray) => setImage(urlArray[0] || '')}
                 />
-                <p className="text-xs text-slate-400 mt-2 text-center">
-                    Recomendado: Imagen cuadrada (500x500px) o rectangular pequeña.
+                <p className="text-xs text-slate-400 mt-3 text-center">
+                    Idealmente imagen cuadrada o rectangular pequeña.
                 </p>
             </div>
         </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-            <Label htmlFor="name">Nombre</Label>
-            <Input 
-                id="name" 
-                placeholder="Ej. Bloques de Construcción" 
-                value={name}
-                onChange={handleNameChange}
-                required
-            />
-            </div>
-
-            <div className="space-y-2">
-            <Label htmlFor="slug">Slug (URL)</Label>
-            <Input 
-                id="slug" 
-                placeholder="bloques-construccion" 
-                value={slug}
-                onChange={(e) => setSlug(e.target.value)}
-                required
-            />
-            </div>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="division">División (Tienda)</Label>
-          <select
-            id="division"
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-            value={division}
-            onChange={(e) => setDivision(e.target.value as Division)}
-          >
-            <option value="JUGUETERIA">🧸 Festamas (Juguetería)</option>
-            <option value="FIESTAS">🎉 FiestasYa (Decoración)</option>
-          </select>
-        </div>
-
-      </div>
-
-      <div className="mt-8 flex items-center justify-end gap-4">
-        <Link href="/admin/categories">
-            <Button type="button" variant="outline" disabled={loading}>
-                <ArrowLeft className="mr-2 h-4 w-4" /> Cancelar
-            </Button>
-        </Link>
-        <Button type="submit" className="min-w-[150px]" disabled={loading}>
-            {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-            {category ? 'Guardar Cambios' : 'Crear Categoría'}
-        </Button>
       </div>
     </form>
   );

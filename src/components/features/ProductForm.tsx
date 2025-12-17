@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createOrUpdateProduct } from '@/actions/product-form';
 import { Product, Category, Division } from '@prisma/client';
@@ -9,213 +9,285 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
-import { Loader2, Save, ArrowLeft, DollarSign, Tag, Percent } from 'lucide-react';
+import { 
+  Loader2, Save, ArrowLeft, DollarSign, Tag, 
+  Percent, Layers, Palette, BoxSelect, Info 
+} from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import ImageUpload from '@/components/ui/image-upload';
+import { cn } from '@/lib/utils';
 
 interface Props {
   product?: Product | null;
   categories: Category[];
+  defaultDivision?: Division;
 }
 
-export function ProductForm({ product, categories }: Props) {
+export function ProductForm({ product, categories, defaultDivision = 'JUGUETERIA' }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [images, setImages] = useState<string[]>(product?.images || []);
   const [isAvailable, setIsAvailable] = useState(product?.isAvailable ?? true);
+  
+  // 🎨 Estado para el Color (Hexadecimal)
+  const [color, setColor] = useState(product?.color || '');
+
+  // La división viene forzada por el sistema (Switcher) o el producto
+  const currentDivision = product?.division || defaultDivision;
+  const isFestamas = currentDivision === 'JUGUETERIA';
+
+  const brandFocusClass = isFestamas ? "focus-visible:ring-festamas-primary" : "focus-visible:ring-fiestasya-accent";
+  const brandTextClass = isFestamas ? "text-festamas-primary" : "text-fiestasya-accent";
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
 
     const formData = new FormData(e.currentTarget);
-    
-    // Agregar imágenes manualmente al FormData
     images.forEach(img => formData.append('images', img));
-    // Agregar isAvailable
     if (isAvailable) formData.set('isAvailable', 'on');
+    
+    // 👇 Aseguramos que el color y división se envíen
+    formData.set('division', currentDivision);
+    formData.set('color', color); 
 
     const result = await createOrUpdateProduct(formData, product?.id);
 
     if (result.success) {
-      toast.success(product ? 'Producto actualizado' : 'Producto creado');
+      toast.success(product ? 'Producto actualizado correctamente' : 'Producto creado con éxito');
       router.push('/admin/products');
       router.refresh();
     } else {
-      toast.error(result.error || 'Error al guardar');
+      toast.error(result.error || 'Error al guardar el producto');
     }
     setLoading(false);
   };
 
   return (
-    <form onSubmit={handleSubmit} className="max-w-4xl mx-auto space-y-8 pb-10">
+    <form onSubmit={handleSubmit} className="w-full max-w-[1600px] space-y-8 pb-20">
       
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      {/* HEADER */}
+      <div className="flex items-center justify-between border-b border-slate-200 pb-6">
+        <div>
+            <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+                {product ? 'Editar Producto' : 'Nuevo Producto'}
+                <span className={cn("text-xs px-2 py-1 rounded-md bg-slate-100 uppercase font-extrabold tracking-wide", brandTextClass)}>
+                    {isFestamas ? 'Festamas' : 'FiestasYa'}
+                </span>
+            </h2>
+            <p className="text-slate-500 text-sm mt-1">Completa la ficha técnica del producto.</p>
+        </div>
+        <div className="flex gap-3">
+            <Button type="button" variant="outline" onClick={() => router.back()} disabled={loading}>
+                Cancelar
+            </Button>
+            <Button 
+                type="submit" 
+                className={cn("text-white min-w-[140px]", isFestamas ? "bg-festamas-primary hover:bg-festamas-primary/90" : "bg-fiestasya-accent hover:bg-fiestasya-accent/90")} 
+                disabled={loading}
+            >
+                {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                Guardar
+            </Button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         
-        {/* COLUMNA IZQUIERDA: Info Principal */}
-        <div className="lg:col-span-2 space-y-6">
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-4">
-                <h3 className="font-bold text-lg text-slate-800 border-b pb-2 mb-4">Información General</h3>
+        {/* 👈 COLUMNA IZQUIERDA (8/12) */}
+        <div className="lg:col-span-8 space-y-6">
+            
+            {/* 1. INFORMACIÓN BÁSICA */}
+            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                <h3 className="font-bold text-base text-slate-900 mb-4 flex items-center gap-2">
+                    <Info className="h-4 w-4 text-slate-400" /> Información Básica
+                </h3>
                 
-                <div className="space-y-2">
-                    <Label htmlFor="title">Título del Producto</Label>
-                    <Input id="title" name="title" defaultValue={product?.title} required placeholder="Ej. Muñeca Barbie Playa" />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-4">
                     <div className="space-y-2">
-                        <Label htmlFor="slug">Slug (URL)</Label>
-                        <Input id="slug" name="slug" defaultValue={product?.slug} required placeholder="muneca-barbie-playa" />
+                        <Label htmlFor="title">Nombre del Producto</Label>
+                        <Input id="title" name="title" defaultValue={product?.title} required placeholder="Ej. Kit de Fiesta Dinosaurios" className={brandFocusClass} />
                     </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                            <Label htmlFor="slug">Slug (URL)</Label>
+                            <Input id="slug" name="slug" defaultValue={product?.slug} required placeholder="kit-fiesta-dinosaurios" className="font-mono text-sm bg-slate-50" />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="categoryId">Categoría</Label>
+                            <select 
+                                id="categoryId" 
+                                name="categoryId" 
+                                className={cn("flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", brandFocusClass)}
+                                defaultValue={product?.categoryId}
+                                required
+                            >
+                                <option value="">Seleccionar Categoría...</option>
+                                {categories.map(cat => (
+                                    <option key={cat.id} value={cat.id}>{cat.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+
                     <div className="space-y-2">
-                        <Label htmlFor="categoryId">Categoría</Label>
-                        <select 
-                            id="categoryId" 
-                            name="categoryId" 
-                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                            defaultValue={product?.categoryId}
-                            required
-                        >
-                            <option value="">Seleccionar...</option>
-                            {categories.map(cat => (
-                                <option key={cat.id} value={cat.id}>{cat.name} ({cat.division})</option>
-                            ))}
-                        </select>
+                        <Label htmlFor="description">Descripción Detallada</Label>
+                        <Textarea id="description" name="description" defaultValue={product?.description} required rows={6} className={brandFocusClass} />
                     </div>
-                </div>
-
-                <div className="space-y-2">
-                    <Label htmlFor="description">Descripción</Label>
-                    <Textarea id="description" name="description" defaultValue={product?.description} required rows={5} />
-                </div>
-
-                {/* TAGS (NUEVO) */}
-                <div className="space-y-2">
-                    <Label htmlFor="tags" className="flex items-center gap-2">
-                        <Tag className="h-4 w-4 text-slate-500" /> Etiquetas (Tags)
-                    </Label>
-                    <Input 
-                        id="tags" 
-                        name="tags" 
-                        defaultValue={product?.tags.join(', ')} 
-                        placeholder="Ej. niño, verano, superhéroe (separados por coma)" 
-                    />
-                    <p className="text-xs text-slate-500">Útil para agrupar productos en secciones especiales.</p>
                 </div>
             </div>
 
-            {/* PRECIOS Y OFERTAS (NUEVO) */}
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-4">
-                <h3 className="font-bold text-lg text-slate-800 border-b pb-2 mb-4 flex items-center gap-2">
-                    <DollarSign className="h-5 w-5" /> Precios y Ofertas
+            {/* 2. PRECIOS Y COMERCIAL */}
+            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                <h3 className="font-bold text-base text-slate-900 mb-4 flex items-center gap-2">
+                    <DollarSign className="h-4 w-4 text-slate-400" /> Estrategia de Precios
                 </h3>
 
-                <div className="grid grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div className="space-y-2">
-                        <Label htmlFor="price">Precio Regular (Unitario)</Label>
-                        <Input type="number" id="price" name="price" defaultValue={String(product?.price || '')} required step="0.01" min="0" />
+                        <Label htmlFor="price">Precio Regular (S/)</Label>
+                        <Input type="number" id="price" name="price" defaultValue={String(product?.price || '')} required step="0.01" min="0" className={brandFocusClass} />
                     </div>
                     
-                    {/* DESCUENTO PORCENTUAL */}
                     <div className="space-y-2">
-                        <Label htmlFor="discountPercentage" className="text-pink-600 font-semibold flex items-center gap-1">
-                            <Percent className="h-4 w-4" /> Descuento (%)
-                        </Label>
-                        <Input 
-                            type="number" 
-                            id="discountPercentage" 
-                            name="discountPercentage" 
-                            defaultValue={product?.discountPercentage || 0} 
-                            min="0" 
-                            max="100" 
-                            className="border-pink-200 focus-visible:ring-pink-500"
-                        />
-                        <p className="text-xs text-slate-400">Si pones 20, se mostrará como -20% OFF.</p>
+                        <Label htmlFor="discountPercentage" className={brandTextClass + " font-semibold"}>Descuento (%)</Label>
+                        <div className="relative">
+                            <Percent className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                            <Input 
+                                type="number" id="discountPercentage" name="discountPercentage" 
+                                defaultValue={product?.discountPercentage || 0} min="0" max="100" 
+                                className={`pl-9 ${brandFocusClass}`} 
+                            />
+                        </div>
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label htmlFor="stock">Stock Disponible</Label>
+                        <div className="relative">
+                            <Layers className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                            <Input 
+                                type="number" id="stock" name="stock" 
+                                defaultValue={product?.stock || 0} required min="0" 
+                                className={`pl-9 ${brandFocusClass}`}
+                            />
+                        </div>
                     </div>
                 </div>
 
-                <div className="p-4 bg-slate-50 rounded-lg border border-slate-200 space-y-4">
-                    <h4 className="font-semibold text-sm text-slate-700">Configuración Mayorista (Opcional)</h4>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="wholesalePrice">Precio Mayorista</Label>
-                            <Input 
-                                type="number" 
-                                id="wholesalePrice" 
-                                name="wholesalePrice" 
-                                defaultValue={product?.wholesalePrice ? String(product.wholesalePrice) : ''} 
-                                step="0.01" 
-                                min="0" 
-                                placeholder="0.00"
-                            />
+                <div className="mt-6 p-4 bg-slate-50/50 rounded-lg border border-slate-200 grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                        <Label htmlFor="wholesalePrice" className="text-slate-600">Precio Mayorista (S/)</Label>
+                        <Input type="number" id="wholesalePrice" name="wholesalePrice" defaultValue={product?.wholesalePrice ? String(product.wholesalePrice) : ''} step="0.01" min="0" className="bg-white" />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="wholesaleMinCount" className="text-slate-600">Cantidad Mínima Mayorista</Label>
+                        <Input type="number" id="wholesaleMinCount" name="wholesaleMinCount" defaultValue={product?.wholesaleMinCount || ''} min="1" className="bg-white" />
+                    </div>
+                </div>
+            </div>
+
+            {/* 3. VARIANTES Y AGRUPACIÓN */}
+            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                <h3 className="font-bold text-base text-slate-900 mb-4 flex items-center gap-2">
+                    <BoxSelect className="h-4 w-4 text-slate-400" /> Variantes y Agrupación
+                </h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    
+                    {/* 🎨 COLOR PICKER INTELIGENTE */}
+                    <div className="space-y-2">
+                        <Label htmlFor="color" className="flex items-center gap-2">
+                            <Palette className="h-4 w-4 text-slate-500" /> Color (Variante)
+                        </Label>
+                        <div className="flex gap-3">
+                            <div className="relative shrink-0 overflow-hidden w-11 h-11 rounded-lg border border-slate-200 shadow-sm">
+                                <input 
+                                    type="color" 
+                                    className="absolute -top-2 -left-2 w-[200%] h-[200%] p-0 cursor-pointer border-0 outline-none"
+                                    // Si no hay color válido, por defecto negro para el picker
+                                    value={color.startsWith('#') && color.length === 7 ? color : '#000000'}
+                                    onChange={(e) => setColor(e.target.value)}
+                                />
+                            </div>
+                            <div className="flex-1">
+                                <Input 
+                                    id="color" 
+                                    name="color" 
+                                    value={color}
+                                    onChange={(e) => setColor(e.target.value)}
+                                    placeholder="#RRGGBB" 
+                                    className={`${brandFocusClass} font-mono uppercase`}
+                                />
+                            </div>
                         </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="wholesaleMinCount">Cantidad Mínima</Label>
-                            <Input 
-                                type="number" 
-                                id="wholesaleMinCount" 
-                                name="wholesaleMinCount" 
-                                defaultValue={product?.wholesaleMinCount || ''} 
-                                min="1" 
-                                placeholder="Ej. 6"
-                            />
-                        </div>
+                        <p className="text-[11px] text-slate-400">
+                            Selecciona un color para que aparezca la "burbuja" en la tienda.
+                        </p>
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label htmlFor="groupTag" className="flex items-center gap-2">
+                            <Tag className="h-4 w-4 text-slate-500" /> Group Tag (Agrupador)
+                        </Label>
+                        <Input 
+                            id="groupTag" name="groupTag" 
+                            defaultValue={product?.groupTag || ''} 
+                            placeholder="Ej. CAMISETA-VERANO-2025" 
+                            className="uppercase font-mono text-sm bg-slate-50"
+                        />
+                        <p className="text-[11px] text-slate-400">
+                            Usa el MISMO código para productos que sean variantes entre sí.
+                        </p>
                     </div>
                 </div>
             </div>
         </div>
 
-        {/* COLUMNA DERECHA: Estado e Imágenes */}
-        <div className="space-y-6">
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-4">
-                <h3 className="font-bold text-lg text-slate-800 mb-4">Estado</h3>
-                
+        {/* 👉 COLUMNA DERECHA (4/12) */}
+        <div className="lg:col-span-4 space-y-6">
+            
+            {/* ESTADO */}
+            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
                 <div className="flex items-center justify-between">
-                    <Label htmlFor="isAvailable">Disponible</Label>
-                    <Switch id="isAvailable" checked={isAvailable} onCheckedChange={setIsAvailable} />
-                </div>
-
-                <div className="space-y-2">
-                    <Label htmlFor="stock">Stock Actual</Label>
-                    <Input type="number" id="stock" name="stock" defaultValue={product?.stock || 0} required min="0" />
-                </div>
-
-                <div className="space-y-2">
-                    <Label htmlFor="division">División</Label>
-                    <select 
-                        id="division" 
-                        name="division" 
-                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                        defaultValue={product?.division || 'JUGUETERIA'}
-                    >
-                        <option value="JUGUETERIA">🧸 Festamas</option>
-                        <option value="FIESTAS">🎉 FiestasYa</option>
-                    </select>
+                    <div className="space-y-0.5">
+                        <Label className="text-base font-semibold">Estado del Producto</Label>
+                        <p className="text-xs text-slate-500">¿Visible para los clientes?</p>
+                    </div>
+                    <Switch 
+                        id="isAvailable" 
+                        checked={isAvailable} 
+                        onCheckedChange={setIsAvailable} 
+                        className={isFestamas ? "data-[state=checked]:bg-festamas-primary" : "data-[state=checked]:bg-fiestasya-accent"}
+                    />
                 </div>
             </div>
 
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-4">
-                <h3 className="font-bold text-lg text-slate-800 mb-4">Imágenes</h3>
+            {/* IMÁGENES */}
+            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                <h3 className="font-bold text-base text-slate-900 mb-4">Galería de Imágenes</h3>
                 <ImageUpload 
                     value={images} 
                     onChange={(urls) => setImages(urls)}
                 />
             </div>
-        </div>
-      </div>
 
-      {/* FOOTER ACTIONS */}
-      <div className="flex items-center justify-end gap-4 border-t pt-6">
-        <Link href="/admin/products">
-            <Button type="button" variant="outline" disabled={loading}>
-                <ArrowLeft className="mr-2 h-4 w-4" /> Cancelar
-            </Button>
-        </Link>
-        <Button type="submit" className="min-w-[150px] bg-slate-900 hover:bg-slate-800" disabled={loading}>
-            {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-            {product ? 'Guardar Cambios' : 'Crear Producto'}
-        </Button>
+            {/* TAGS */}
+            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                <h3 className="font-bold text-base text-slate-900 mb-4">Etiquetas de Búsqueda</h3>
+                <div className="space-y-2">
+                    <Label htmlFor="tags">Tags (Separados por coma)</Label>
+                    <Input 
+                        id="tags" 
+                        name="tags" 
+                        defaultValue={product?.tags.join(', ')} 
+                        placeholder="verano, niños, oferta" 
+                        className={brandFocusClass}
+                    />
+                </div>
+            </div>
+        </div>
       </div>
     </form>
   );
