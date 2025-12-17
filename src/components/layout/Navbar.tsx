@@ -2,7 +2,9 @@ import prisma from '@/lib/prisma';
 import { NavbarClient } from './NavbarClient';
 import { cookies } from 'next/headers';
 import { Division } from '@prisma/client';
-import { auth } from '@/auth'; // 👈 Importamos auth
+import { auth } from '@/auth'; 
+import { FavoritesInitializer } from '@/components/features/FavoritesInitializer'; // 👈 Importar
+import { getFavoriteIds } from '@/actions/favorites'; // 👈 Importar
 
 export async function Navbar() {
   const categories = await prisma.category.findMany({
@@ -22,15 +24,25 @@ export async function Navbar() {
     ? rawDivision 
     : 'JUGUETERIA';
 
-  // 🔐 4. Obtenemos la sesión del usuario
+  // 🔐 Sesión
   const session = await auth();
 
+  // ❤️ Obtener IDs de favoritos
+  // Usamos el action que creamos para reutilizar lógica
+  const favoriteIds = await getFavoriteIds();
+
   return (
-    <NavbarClient 
-      categories={categories} 
-      defaultDivision={defaultDivision}
-      user={session?.user} // 👈 Se la pasamos al cliente
-    />
+    <>
+      {/* 🔌 Inicializamos el store con los datos del servidor */}
+      <FavoritesInitializer favoriteIds={favoriteIds} />
+      
+      <NavbarClient 
+        categories={categories} 
+        defaultDivision={defaultDivision}
+        user={session?.user}
+        // Ya no necesitamos pasar el count estático, el cliente lo leerá del store
+      />
+    </>
   );
 }
 

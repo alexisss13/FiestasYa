@@ -12,6 +12,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { useCartStore } from '@/store/cart';
 import { useUIStore, Division } from '@/store/ui';
+import { useFavoritesStore } from '@/store/favorites'; // 👈 IMPORTAR STORE
 import { CartSidebar } from '@/components/features/CartSidebar';
 import { setCookie } from 'cookies-next';
 import { logout } from '@/actions/auth-actions';
@@ -35,6 +36,7 @@ interface NavbarClientProps {
   categories: Category[];
   defaultDivision: Division;
   user?: UserSession | null;
+  // favoritesCount ya no es necesario como prop porque lo leemos del store
 }
 
 // --- BUSCADOR ---
@@ -89,6 +91,10 @@ export function NavbarClient({ categories, defaultDivision, user }: NavbarClient
   const router = useRouter();
   const { getTotalItems } = useCartStore();
   const { setDivision } = useUIStore();
+  
+  // 🧠 CONECTAR AL STORE DE FAVORITOS (Para contador en tiempo real)
+  const favorites = useFavoritesStore(state => state.favorites);
+  const favoritesCount = favorites.length;
   
   // 1. ESTADO OPTIMISTA
   const [optimisticDivision, setOptimisticDivision] = useState<Division>(defaultDivision);
@@ -188,7 +194,6 @@ export function NavbarClient({ categories, defaultDivision, user }: NavbarClient
   const dropdownBrandColor = isToys ? "text-[#fc4b65]" : "text-[#ec4899]";
   const dropdownHoverColor = isToys ? "hover:text-[#fc4b65]" : "hover:text-[#ec4899]";
   
-  // 🔥 NUEVOS: Variables de color explícitas para evitar 'text-primary'
   const textPrimaryClass = isToys ? "text-[#fc4b65]" : "text-[#ec4899]";
   const hoverPrimaryTextClass = isToys ? "hover:text-[#fc4b65]" : "hover:text-[#ec4899]";
   const groupHoverPrimaryTextClass = isToys ? "group-hover:text-[#fc4b65]" : "group-hover:text-[#ec4899]";
@@ -218,7 +223,7 @@ export function NavbarClient({ categories, defaultDivision, user }: NavbarClient
         </div>
       )}
 
-      {/* 1. SUPER HEADER (SELECTOR DIVISIÓN) */}
+      {/* 1. SUPER HEADER */}
       <div className="w-full h-9 bg-white border-b border-slate-100 flex items-center z-[60] relative text-[11px]">
         <div className="w-full max-w-[1600px] mx-auto px-4 lg:px-8 flex items-center justify-between h-full">
             <div className="flex h-full mr-auto">
@@ -377,6 +382,10 @@ export function NavbarClient({ categories, defaultDivision, user }: NavbarClient
                         >
                             Inicio
                         </Link>
+                        <Link href="/favorites" onClick={() => setIsMobileMenuOpen(false)} className={cn("flex items-center gap-2 p-3 border-b border-slate-50 text-slate-600 transition-colors", hoverPrimaryTextClass)}>
+                            <Heart className="h-4 w-4" /> Favoritos {favoritesCount > 0 && `(${favoritesCount})`}
+                        </Link>
+
                         {filteredCategories.map((cat) => (
                             <Link key={cat.id} href={`/category/${cat.slug}`} onClick={() => setIsMobileMenuOpen(false)} className={cn("block p-3 border-b border-slate-50 text-slate-700 text-lg capitalize transition-colors", hoverPrimaryTextClass)}>{cat.name}</Link>
                         ))}
@@ -461,6 +470,13 @@ export function NavbarClient({ categories, defaultDivision, user }: NavbarClient
                                 >
                                     <User className="h-4 w-4" /> Mi Perfil
                                 </Link>
+                                <Link 
+                                    href="/favorites" 
+                                    onClick={() => setIsUserMenuOpen(false)}
+                                    className={cn("flex items-center gap-2 px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50 transition-colors", hoverPrimaryTextClass)}
+                                >
+                                    <Heart className="h-4 w-4" /> Mis Favoritos
+                                </Link>
                                 {user.role === 'ADMIN' && (
                                     <Link 
                                         href="/admin/dashboard" 
@@ -503,14 +519,28 @@ export function NavbarClient({ categories, defaultDivision, user }: NavbarClient
 
               <div className={cn("hidden lg:block h-8 w-px mx-1", isToys ? "bg-white/30" : "bg-slate-300")}></div>
 
-              {/* FAVORITOS */}
-              <Button 
-                variant="ghost" 
-                size="icon"
-                className={cn("hidden md:flex h-11 w-11 border rounded-lg transition-all duration-200", buttonHoverClass)}
-              >
-                  <Heart className="h-6 w-6" />
-              </Button>
+              {/* ❤️ FAVORITOS (CORREGIDO: Usando wrapper relativo para el badge) */}
+              <Link href="/favorites">
+                <Button 
+                    variant="ghost" 
+                    className={cn(
+                        "hidden md:flex relative h-11 px-4 border rounded-lg transition-all duration-200 group", 
+                        buttonHoverClass
+                    )}
+                >
+                    <div className="relative"> {/* 👈 WRAPPER CLAVE */}
+                        <Heart className="h-6 w-6" />
+                        {loaded && favoritesCount > 0 && (
+                            <span className={cn(
+                                "absolute -top-1.5 -right-1.5 flex h-3.5 w-3.5 items-center justify-center rounded-full text-[9px] font-bold shadow-sm ring-1 ring-white animate-in zoom-in",
+                                badgeClass
+                            )}>
+                            {favoritesCount > 9 ? '+9' : favoritesCount}
+                            </span>
+                        )}
+                    </div>
+                </Button>
+              </Link>
 
               {/* CARRITO */}
               <CartSidebar>
@@ -540,7 +570,7 @@ export function NavbarClient({ categories, defaultDivision, user }: NavbarClient
               </CartSidebar>
           </div>
         </div>
-
+        
         <div className="md:hidden px-4 pb-3 pt-1 relative z-50">
              <Suspense>
                 <SearchInput btnBgColor={searchBtnColor} iconColor={searchIconColor} isTransparent={!isToys} className="shadow-none" />

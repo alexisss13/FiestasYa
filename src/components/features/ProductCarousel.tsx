@@ -20,18 +20,12 @@ export const ProductCarousel = memo(function ProductCarousel({ products, classNa
   const [canScrollRight, setCanScrollRight] = useState(true);
   const [showArrows, setShowArrows] = useState(false);
 
-  // 🛡️ LÓGICA DE VISIBILIDAD DE FLECHAS (PRECISIÓN MILIMÉTRICA)
+  // 🛡️ LÓGICA DE VISIBILIDAD DE FLECHAS
   const checkScroll = () => {
     if (scrollRef.current) {
       const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
-      
-      // Solo mostramos la flecha IZQUIERDA si nos hemos movido más de 10px (evita falsos positivos)
       setCanScrollLeft(Math.ceil(scrollLeft) > 10);
-      
-      // Solo mostramos la flecha DERECHA si queda contenido real por ver (tolerancia 5px)
       setCanScrollRight(Math.ceil(scrollLeft) < scrollWidth - clientWidth - 5);
-      
-      // Si todo el contenido cabe en la pantalla, apagamos el sistema de flechas
       setShowArrows(scrollWidth > clientWidth);
     }
   };
@@ -45,7 +39,6 @@ export const ProductCarousel = memo(function ProductCarousel({ products, classNa
   const scroll = (direction: 'left' | 'right') => {
     if (scrollRef.current) {
       const { current } = scrollRef;
-      // Scroll de un bloque lógico (80% del ancho visible)
       const scrollAmount = current.clientWidth * 0.8; 
       
       const targetScroll = direction === 'left' 
@@ -66,7 +59,6 @@ export const ProductCarousel = memo(function ProductCarousel({ products, classNa
       if (!isHovered && scrollRef.current) {
         const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
         
-        // Si llegamos al final, volver al inicio INSTANTÁNEAMENTE (reset invisible)
         if (scrollLeft + clientWidth >= scrollWidth - 10) {
             scrollRef.current.scrollTo({ left: 0, behavior: 'auto' }); 
         } else {
@@ -90,7 +82,6 @@ export const ProductCarousel = memo(function ProductCarousel({ products, classNa
       {/* --- FLECHAS DE NAVEGACIÓN --- */}
       {showArrows && (
         <>
-          {/* FLECHA IZQUIERDA: Se oculta si estamos al inicio (canScrollLeft) */}
           <div className={cn(
                 "absolute top-1/2 -left-3 md:-left-5 -translate-y-1/2 z-30 hidden md:block transition-all duration-300",
                 canScrollLeft ? "opacity-100 translate-x-0" : "opacity-0 translate-x-4 pointer-events-none"
@@ -105,7 +96,6 @@ export const ProductCarousel = memo(function ProductCarousel({ products, classNa
             </Button>
           </div>
           
-          {/* FLECHA DERECHA */}
           <div className={cn(
                 "absolute top-1/2 -right-3 md:-right-5 -translate-y-1/2 z-30 hidden md:block transition-all duration-300",
                 canScrollRight ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-4 pointer-events-none"
@@ -136,8 +126,6 @@ export const ProductCarousel = memo(function ProductCarousel({ products, classNa
         {products.map((product) => (
           <div 
             key={product.id} 
-            // 📐 FIX TAMAÑO: Usamos 'w-' (ancho fijo) en vez de 'min-w-'
-            // Esto obliga a la imagen a respetar el carril y no desbordarse ni cortar la siguiente tarjeta.
             className="snap-start flex-shrink-0 w-[80%] sm:w-[calc(50%-8px)] md:w-[calc(33.333%-11px)] lg:w-[calc(20%-13px)]"
           >
             <ProductCard product={product as any} />

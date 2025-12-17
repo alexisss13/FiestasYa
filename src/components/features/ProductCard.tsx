@@ -2,12 +2,12 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { useState } from 'react';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { AddToCartButton } from './AddToCartButton';
+import { FavoriteButton } from './FavoriteButton';
 import { cn } from '@/lib/utils';
-import { Tag, Package, Heart } from 'lucide-react';
+import { Tag, Package } from 'lucide-react';
 
 interface ProductCardProps {
   product: {
@@ -30,9 +30,8 @@ interface ProductCardProps {
 }
 
 export function ProductCard({ product }: ProductCardProps) {
-  const [isFavorite, setIsFavorite] = useState(false);
-
-  // Lógica de Tienda (Festamas vs FiestasYa)
+  
+  // Lógica de Tienda
   const isFestamas = product.division === 'JUGUETERIA' || !product.division;
   const brandVariant = isFestamas ? 'festamas' : 'fiestasya';
 
@@ -61,14 +60,6 @@ export function ProductCard({ product }: ProductCardProps) {
   const isOutOfStock = product.stock <= 0;
   const hasWholesale = wholesalePrice > 0;
 
-  // Manejador Favoritos
-  const handleFavorite = (e: React.MouseEvent) => {
-    e.preventDefault(); // Evita abrir el link del producto
-    e.stopPropagation();
-    setIsFavorite(!isFavorite);
-    // Aquí conectarías con tu Server Action en el futuro
-  };
-
   return (
     <Card className={cn(
         "group relative flex flex-col h-full overflow-visible transition-all duration-300 bg-white border border-slate-200",
@@ -76,56 +67,50 @@ export function ProductCard({ product }: ProductCardProps) {
         theme.border
     )}>
       
-      {/* SECCIÓN IMAGEN */}
-      <Link href={`/product/${product.slug}`} className="relative block aspect-square overflow-hidden bg-white rounded-t-lg">
-        
-        {/* Badges (Izquierda) */}
-        <div className="absolute top-2 left-2 z-10 flex flex-col gap-1.5">
-            {isOutOfStock ? (
-                <Badge variant="secondary" className="bg-slate-900 text-white font-bold px-2 h-5 shadow-sm">
-                    AGOTADO
-                </Badge>
-            ) : hasDiscount && (
-                // @ts-ignore
-                <Badge variant={brandVariant} className="font-bold px-2 h-5 border-0 shadow-sm flex items-center gap-1">
-                    <Tag className="w-3 h-3" /> -{discount}%
-                </Badge>
+      {/* 🛡️ CONTENEDOR RELATIVO PARA IMAGEN Y BOTÓN */}
+      <div className="relative aspect-square overflow-hidden bg-white rounded-t-lg">
+          
+          {/* Badges (Izquierda) */}
+          <div className="absolute top-2 left-2 z-10 flex flex-col gap-1.5 pointer-events-none">
+              {isOutOfStock ? (
+                  <Badge variant="secondary" className="bg-slate-900 text-white font-bold px-2 h-5 shadow-sm">
+                      AGOTADO
+                  </Badge>
+              ) : hasDiscount && (
+                  // @ts-ignore
+                  <Badge variant={brandVariant} className="font-bold px-2 h-5 border-0 shadow-sm flex items-center gap-1">
+                      <Tag className="w-3 h-3" /> -{discount}%
+                  </Badge>
+              )}
+          </div>
+
+          {/* ❤️ BOTÓN FAVORITOS (HERMANO DEL LINK, NO HIJO) */}
+          {/* Usamos z-30 para asegurarnos que esté encima del Link */}
+          <FavoriteButton 
+              productId={product.id} 
+              className="absolute top-2 right-2 z-30"
+          />
+
+          {/* ENLACE AL PRODUCTO */}
+          <Link href={`/product/${product.slug}`} className="block w-full h-full">
+            {product.images[0] ? (
+                <Image
+                    src={product.images[0]}
+                    alt={product.title}
+                    fill
+                    className={cn(
+                        "object-contain p-4 transition-transform duration-500 group-hover:scale-105 mix-blend-multiply",
+                        isOutOfStock && "opacity-60 grayscale"
+                    )}
+                    sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 20vw"
+                />
+            ) : (
+                <div className="flex h-full w-full items-center justify-center bg-slate-50 text-slate-300">
+                    <Package className="w-10 h-10 opacity-20" />
+                </div>
             )}
-        </div>
-
-        {/* ❤️ BOTÓN FAVORITOS (DERECHA) */}
-        <button 
-            onClick={handleFavorite}
-            className="absolute top-2 right-2 z-20 p-2 rounded-full bg-white/90 shadow-sm hover:shadow-md transition-all hover:scale-110 active:scale-95 group/heart"
-        >
-            <Heart 
-                className={cn(
-                    "w-4 h-4 transition-colors duration-300", 
-                    isFavorite 
-                        ? "fill-rose-500 text-rose-500" // Activo
-                        : "text-slate-400 group-hover/heart:text-rose-500" // Inactivo
-                )} 
-            />
-        </button>
-
-        {/* Imagen */}
-        {product.images[0] ? (
-            <Image
-                src={product.images[0]}
-                alt={product.title}
-                fill
-                className={cn(
-                    "object-contain p-4 transition-transform duration-500 group-hover:scale-105 mix-blend-multiply",
-                    isOutOfStock && "opacity-60 grayscale"
-                )}
-                sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 20vw"
-            />
-        ) : (
-            <div className="flex h-full w-full items-center justify-center bg-slate-50 text-slate-300">
-                <Package className="w-10 h-10 opacity-20" />
-            </div>
-        )}
-      </Link>
+          </Link>
+      </div>
 
       {/* CONTENIDO */}
       <CardContent className="flex flex-col flex-1 p-3 gap-2">
