@@ -11,11 +11,11 @@ export default async function NewProductPage() {
   });
 
   return (
-    <div className="p-8 w-full">
+    // 👇 FIX: p-4 en móvil, p-8 en desktop
+    <div className="p-4 md:p-8 w-full">
       <ProductForm 
         categories={categories} 
         defaultDivision={division}
-        // 👇 EL TRUCO MAESTRO: Esto fuerza el re-render total al cambiar tienda
         key={division} 
       />
     </div>

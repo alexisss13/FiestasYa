@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createOrUpdateProduct } from '@/actions/product-form';
 import { Product, Category, Division } from '@prisma/client';
@@ -10,10 +10,9 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { 
-  Loader2, Save, ArrowLeft, DollarSign, Tag, 
+  Loader2, Save, DollarSign, Tag, 
   Percent, Layers, Palette, BoxSelect, Info 
 } from 'lucide-react';
-import Link from 'next/link';
 import { toast } from 'sonner';
 import ImageUpload from '@/components/ui/image-upload';
 import { cn } from '@/lib/utils';
@@ -30,10 +29,8 @@ export function ProductForm({ product, categories, defaultDivision = 'JUGUETERIA
   const [images, setImages] = useState<string[]>(product?.images || []);
   const [isAvailable, setIsAvailable] = useState(product?.isAvailable ?? true);
   
-  // 🎨 Estado para el Color (Hexadecimal)
   const [color, setColor] = useState(product?.color || '');
 
-  // La división viene forzada por el sistema (Switcher) o el producto
   const currentDivision = product?.division || defaultDivision;
   const isFestamas = currentDivision === 'JUGUETERIA';
 
@@ -48,29 +45,28 @@ export function ProductForm({ product, categories, defaultDivision = 'JUGUETERIA
     images.forEach(img => formData.append('images', img));
     if (isAvailable) formData.set('isAvailable', 'on');
     
-    // 👇 Aseguramos que el color y división se envíen
     formData.set('division', currentDivision);
     formData.set('color', color); 
 
     const result = await createOrUpdateProduct(formData, product?.id);
 
     if (result.success) {
-      toast.success(product ? 'Producto actualizado correctamente' : 'Producto creado con éxito');
+      toast.success(product ? 'Producto actualizado' : 'Producto creado');
       router.push('/admin/products');
       router.refresh();
     } else {
-      toast.error(result.error || 'Error al guardar el producto');
+      toast.error(result.error || 'Error al guardar');
     }
     setLoading(false);
   };
 
   return (
-    <form onSubmit={handleSubmit} className="w-full max-w-[1600px] space-y-8 pb-20">
+    <form onSubmit={handleSubmit} className="w-full max-w-[1600px] space-y-6 md:space-y-8 pb-20">
       
-      {/* HEADER */}
-      <div className="flex items-center justify-between border-b border-slate-200 pb-6">
+      {/* HEADER RESPONSIVO */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-slate-200 pb-4 md:pb-6 gap-4">
         <div>
-            <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+            <h2 className="text-xl md:text-2xl font-bold text-slate-900 flex flex-wrap items-center gap-2">
                 {product ? 'Editar Producto' : 'Nuevo Producto'}
                 <span className={cn("text-xs px-2 py-1 rounded-md bg-slate-100 uppercase font-extrabold tracking-wide", brandTextClass)}>
                     {isFestamas ? 'Festamas' : 'FiestasYa'}
@@ -78,13 +74,13 @@ export function ProductForm({ product, categories, defaultDivision = 'JUGUETERIA
             </h2>
             <p className="text-slate-500 text-sm mt-1">Completa la ficha técnica del producto.</p>
         </div>
-        <div className="flex gap-3">
-            <Button type="button" variant="outline" onClick={() => router.back()} disabled={loading}>
+        <div className="flex gap-3 w-full md:w-auto">
+            <Button type="button" variant="outline" onClick={() => router.back()} disabled={loading} className="flex-1 md:flex-none">
                 Cancelar
             </Button>
             <Button 
                 type="submit" 
-                className={cn("text-white min-w-[140px]", isFestamas ? "bg-festamas-primary hover:bg-festamas-primary/90" : "bg-fiestasya-accent hover:bg-fiestasya-accent/90")} 
+                className={cn("text-white flex-1 md:flex-none min-w-[140px]", isFestamas ? "bg-festamas-primary hover:bg-festamas-primary/90" : "bg-fiestasya-accent hover:bg-fiestasya-accent/90")} 
                 disabled={loading}
             >
                 {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
@@ -93,13 +89,13 @@ export function ProductForm({ product, categories, defaultDivision = 'JUGUETERIA
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 md:gap-8">
         
-        {/* 👈 COLUMNA IZQUIERDA (8/12) */}
-        <div className="lg:col-span-8 space-y-6">
+        {/* 👈 COLUMNA IZQUIERDA (Info Principal) */}
+        <div className="xl:col-span-8 space-y-6">
             
             {/* 1. INFORMACIÓN BÁSICA */}
-            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+            <div className="bg-white p-4 md:p-6 rounded-xl border border-slate-200 shadow-sm">
                 <h3 className="font-bold text-base text-slate-900 mb-4 flex items-center gap-2">
                     <Info className="h-4 w-4 text-slate-400" /> Información Básica
                 </h3>
@@ -110,7 +106,7 @@ export function ProductForm({ product, categories, defaultDivision = 'JUGUETERIA
                         <Input id="title" name="title" defaultValue={product?.title} required placeholder="Ej. Kit de Fiesta Dinosaurios" className={brandFocusClass} />
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                         <div className="space-y-2">
                             <Label htmlFor="slug">Slug (URL)</Label>
                             <Input id="slug" name="slug" defaultValue={product?.slug} required placeholder="kit-fiesta-dinosaurios" className="font-mono text-sm bg-slate-50" />
@@ -140,12 +136,12 @@ export function ProductForm({ product, categories, defaultDivision = 'JUGUETERIA
             </div>
 
             {/* 2. PRECIOS Y COMERCIAL */}
-            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+            <div className="bg-white p-4 md:p-6 rounded-xl border border-slate-200 shadow-sm">
                 <h3 className="font-bold text-base text-slate-900 mb-4 flex items-center gap-2">
                     <DollarSign className="h-4 w-4 text-slate-400" /> Estrategia de Precios
                 </h3>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6">
                     <div className="space-y-2">
                         <Label htmlFor="price">Precio Regular (S/)</Label>
                         <Input type="number" id="price" name="price" defaultValue={String(product?.price || '')} required step="0.01" min="0" className={brandFocusClass} />
@@ -176,7 +172,7 @@ export function ProductForm({ product, categories, defaultDivision = 'JUGUETERIA
                     </div>
                 </div>
 
-                <div className="mt-6 p-4 bg-slate-50/50 rounded-lg border border-slate-200 grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="mt-6 p-4 bg-slate-50/50 rounded-lg border border-slate-200 grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
                     <div className="space-y-2">
                         <Label htmlFor="wholesalePrice" className="text-slate-600">Precio Mayorista (S/)</Label>
                         <Input type="number" id="wholesalePrice" name="wholesalePrice" defaultValue={product?.wholesalePrice ? String(product.wholesalePrice) : ''} step="0.01" min="0" className="bg-white" />
@@ -188,15 +184,15 @@ export function ProductForm({ product, categories, defaultDivision = 'JUGUETERIA
                 </div>
             </div>
 
-            {/* 3. VARIANTES Y AGRUPACIÓN */}
-            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+            {/* 3. VARIANTES */}
+            <div className="bg-white p-4 md:p-6 rounded-xl border border-slate-200 shadow-sm">
                 <h3 className="font-bold text-base text-slate-900 mb-4 flex items-center gap-2">
                     <BoxSelect className="h-4 w-4 text-slate-400" /> Variantes y Agrupación
                 </h3>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                     
-                    {/* 🎨 COLOR PICKER INTELIGENTE */}
+                    {/* COLOR PICKER */}
                     <div className="space-y-2">
                         <Label htmlFor="color" className="flex items-center gap-2">
                             <Palette className="h-4 w-4 text-slate-500" /> Color (Variante)
@@ -206,7 +202,6 @@ export function ProductForm({ product, categories, defaultDivision = 'JUGUETERIA
                                 <input 
                                     type="color" 
                                     className="absolute -top-2 -left-2 w-[200%] h-[200%] p-0 cursor-pointer border-0 outline-none"
-                                    // Si no hay color válido, por defecto negro para el picker
                                     value={color.startsWith('#') && color.length === 7 ? color : '#000000'}
                                     onChange={(e) => setColor(e.target.value)}
                                 />
@@ -222,9 +217,6 @@ export function ProductForm({ product, categories, defaultDivision = 'JUGUETERIA
                                 />
                             </div>
                         </div>
-                        <p className="text-[11px] text-slate-400">
-                            Selecciona un color para que aparezca la "burbuja" en la tienda.
-                        </p>
                     </div>
 
                     <div className="space-y-2">
@@ -237,19 +229,15 @@ export function ProductForm({ product, categories, defaultDivision = 'JUGUETERIA
                             placeholder="Ej. CAMISETA-VERANO-2025" 
                             className="uppercase font-mono text-sm bg-slate-50"
                         />
-                        <p className="text-[11px] text-slate-400">
-                            Usa el MISMO código para productos que sean variantes entre sí.
-                        </p>
                     </div>
                 </div>
             </div>
         </div>
 
-        {/* 👉 COLUMNA DERECHA (4/12) */}
-        <div className="lg:col-span-4 space-y-6">
+        {/* 👉 COLUMNA DERECHA (Media & Config) */}
+        <div className="xl:col-span-4 space-y-6">
             
-            {/* ESTADO */}
-            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+            <div className="bg-white p-4 md:p-6 rounded-xl border border-slate-200 shadow-sm">
                 <div className="flex items-center justify-between">
                     <div className="space-y-0.5">
                         <Label className="text-base font-semibold">Estado del Producto</Label>
@@ -264,8 +252,7 @@ export function ProductForm({ product, categories, defaultDivision = 'JUGUETERIA
                 </div>
             </div>
 
-            {/* IMÁGENES */}
-            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+            <div className="bg-white p-4 md:p-6 rounded-xl border border-slate-200 shadow-sm">
                 <h3 className="font-bold text-base text-slate-900 mb-4">Galería de Imágenes</h3>
                 <ImageUpload 
                     value={images} 
@@ -273,8 +260,7 @@ export function ProductForm({ product, categories, defaultDivision = 'JUGUETERIA
                 />
             </div>
 
-            {/* TAGS */}
-            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+            <div className="bg-white p-4 md:p-6 rounded-xl border border-slate-200 shadow-sm">
                 <h3 className="font-bold text-base text-slate-900 mb-4">Etiquetas de Búsqueda</h3>
                 <div className="space-y-2">
                     <Label htmlFor="tags">Tags (Separados por coma)</Label>

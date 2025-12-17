@@ -7,8 +7,7 @@ import { Category, Division } from '@prisma/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, Save, ArrowLeft } from 'lucide-react';
-import Link from 'next/link';
+import { Loader2, Save } from 'lucide-react';
 import { toast } from 'sonner';
 import ImageUpload from '@/components/ui/image-upload'; 
 import { cn } from '@/lib/utils';
@@ -26,11 +25,9 @@ export function CategoryForm({ category, defaultDivision = 'JUGUETERIA' }: Props
   const [slug, setSlug] = useState(category?.slug || '');
   const [image, setImage] = useState(category?.image || '');
   
-  // Usamos la prop defaultDivision o la de la categoría existente
   const currentDivision = category?.division || defaultDivision;
   const isFestamas = currentDivision === 'JUGUETERIA';
 
-  // Clases dinámicas
   const brandFocusClass = isFestamas ? "focus-visible:ring-festamas-primary" : "focus-visible:ring-fiestasya-accent";
   const brandTextClass = isFestamas ? "text-festamas-primary" : "text-fiestasya-accent";
 
@@ -42,7 +39,6 @@ export function CategoryForm({ category, defaultDivision = 'JUGUETERIA' }: Props
     formData.append('name', name);
     formData.append('slug', slug);
     formData.append('image', image);
-    // 👇 Inyección silenciosa
     formData.append('division', currentDivision);
 
     const result = category 
@@ -68,25 +64,25 @@ export function CategoryForm({ category, defaultDivision = 'JUGUETERIA' }: Props
   };
 
   return (
-    <form onSubmit={handleSubmit} className="w-full max-w-[1200px] space-y-8 pb-20">
+    <form onSubmit={handleSubmit} className="w-full max-w-[1200px] space-y-6 md:space-y-8 pb-20">
       
       {/* HEADER */}
-      <div className="flex items-center justify-between border-b border-slate-200 pb-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-slate-200 pb-4 md:pb-6 gap-4">
         <div>
-            <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+            <h2 className="text-xl md:text-2xl font-bold text-slate-900 flex flex-wrap items-center gap-2">
                 {category ? 'Editar Categoría' : 'Nueva Categoría'}
                 <span className={cn("text-xs px-2 py-1 rounded-md bg-slate-100 uppercase font-extrabold tracking-wide", brandTextClass)}>
                     {isFestamas ? 'Festamas' : 'FiestasYa'}
                 </span>
             </h2>
         </div>
-        <div className="flex gap-3">
-            <Button type="button" variant="outline" asChild disabled={loading}>
-                <Link href="/admin/categories">Cancelar</Link>
+        <div className="flex gap-3 w-full md:w-auto">
+            <Button type="button" variant="outline" onClick={() => router.back()} disabled={loading} className="flex-1 md:flex-none">
+                Cancelar
             </Button>
             <Button 
                 type="submit" 
-                className={cn("text-white min-w-[140px]", isFestamas ? "bg-festamas-primary hover:bg-festamas-primary/90" : "bg-fiestasya-accent hover:bg-fiestasya-accent/90")}
+                className={cn("text-white flex-1 md:flex-none min-w-[140px]", isFestamas ? "bg-festamas-primary hover:bg-festamas-primary/90" : "bg-fiestasya-accent hover:bg-fiestasya-accent/90")}
                 disabled={loading}
             >
                 {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
@@ -95,10 +91,10 @@ export function CategoryForm({ category, defaultDivision = 'JUGUETERIA' }: Props
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8">
         
-        {/* COLUMNA IZQUIERDA (Información) */}
-        <div className="lg:col-span-8 bg-white p-6 rounded-xl border border-slate-200 shadow-sm h-fit">
+        {/* COLUMNA IZQUIERDA */}
+        <div className="lg:col-span-8 bg-white p-4 md:p-6 rounded-xl border border-slate-200 shadow-sm h-fit">
             <h3 className="font-bold text-base text-slate-900 mb-6 border-b pb-2">Datos Generales</h3>
             <div className="space-y-6">
                 <div className="space-y-2">
@@ -127,8 +123,8 @@ export function CategoryForm({ category, defaultDivision = 'JUGUETERIA' }: Props
             </div>
         </div>
 
-        {/* COLUMNA DERECHA (Imagen) */}
-        <div className="lg:col-span-4 bg-white p-6 rounded-xl border border-slate-200 shadow-sm h-fit">
+        {/* COLUMNA DERECHA */}
+        <div className="lg:col-span-4 bg-white p-4 md:p-6 rounded-xl border border-slate-200 shadow-sm h-fit">
             <h3 className="font-bold text-base text-slate-900 mb-4">Imagen de Portada</h3>
             <div className="bg-slate-50 p-4 rounded-lg border border-dashed border-slate-300">
                 <ImageUpload 
