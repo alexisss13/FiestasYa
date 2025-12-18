@@ -20,7 +20,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { cn, formatCurrency } from '@/lib/utils';
-import { BarcodeControl } from '@/components/admin/BarcodeControl'; // Importar si lo usas, si no quitar
 
 // Tipos
 type POSProduct = {
@@ -145,7 +144,6 @@ export const POSInterface = ({ initialProducts, division }: Props) => {
   if (!isMounted) return null;
 
   return (
-    // 📏 LAYOUT FLEX PRINCIPAL
     <div className="flex flex-col lg:flex-row h-full w-full bg-slate-50/50">
       
       {/* 👈 IZQUIERDA: CATÁLOGO */}
@@ -170,8 +168,9 @@ export const POSInterface = ({ initialProducts, division }: Props) => {
         </div>
 
         {/* GRID PRODUCTOS */}
-        <div className="flex-1 min-h-0 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden mb-20 lg:mb-0">
-            <ScrollArea className="h-full">
+        <div className="flex-1 min-h-0 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden mb-20 lg:mb-0 relative">
+            {/* Usamos absolute inset-0 para asegurar scroll en el grid también */}
+            <ScrollArea className="h-full w-full absolute inset-0">
                 <div className="p-4"> 
                     {products.length === 0 ? (
                         <div className="flex flex-col items-center justify-center h-full text-slate-300 min-h-[300px]">
@@ -238,8 +237,8 @@ export const POSInterface = ({ initialProducts, division }: Props) => {
       {/* 👉 DERECHA: TICKET Y CLIENTE (Fijo Web) */}
       <div className="hidden lg:flex flex-col w-[380px] xl:w-[420px] shrink-0 h-full border-l border-slate-200 bg-white z-10 shadow-xl">
         
-        {/* 1. SECCIÓN CLIENTE (Fijo Arriba) */}
-        <div className="p-4 border-b border-slate-100 bg-white space-y-3 shrink-0">
+        {/* 1. SECCIÓN CLIENTE (Altura Fija) */}
+        <div className="p-4 border-b border-slate-100 bg-white space-y-3 shrink-0 z-20">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
                 <div className="flex items-center gap-2 text-slate-800 font-bold">
                     <User className={cn("h-5 w-5", brandText)} /> Cliente
@@ -274,9 +273,8 @@ export const POSInterface = ({ initialProducts, division }: Props) => {
             />
         </div>
 
-        {/* 2. AREA CENTRAL (Header Items + Lista con Scroll) */}
-        {/* Usamos flex-1 y min-h-0 para que ocupe el espacio disponible y active scroll interno */}
-        <div className="flex-1 flex flex-col min-h-0 bg-slate-50/30 relative">
+        {/* 2. AREA CENTRAL (Flexible) */}
+        <div className="flex-1 flex flex-col min-h-0 bg-slate-50/30">
             <div className="p-3 border-b border-slate-100 flex justify-between items-center bg-white/50 shrink-0">
                 <div className="flex items-center gap-2 font-bold text-slate-700 text-sm">
                     <ShoppingCart className="h-4 w-4" /> Items <Badge variant="secondary" className="h-5 px-1.5 min-w-[20px] justify-center bg-white border border-slate-200 text-slate-600">{getItemsCount()}</Badge>
@@ -286,20 +284,21 @@ export const POSInterface = ({ initialProducts, division }: Props) => {
                 </Button>
             </div>
 
-            {/* 🔥 FIX DEL SCROLL AQUÍ: h-full en ScrollArea */}
-            <ScrollArea className="flex-1 h-full w-full">
-                {/* 🔥 FIX DEL ÚLTIMO ITEM: Padding inferior grande (pb-6) */}
-                <div className="p-3 pb-6"> 
-                    <CartList 
-                        cart={cart} updateQuantity={updateQuantity} removeFromCart={removeFromCart} 
-                        getItemActivePrice={getItemActivePrice}
-                    />
-                </div>
-            </ScrollArea>
+            {/* 👇 CONTENEDOR RELATIVO + SCROLL ABSOLUTO (La Solución) */}
+            <div className="flex-1 relative w-full overflow-hidden">
+                <ScrollArea className="h-full w-full absolute inset-0">
+                    <div className="p-3 pb-4"> 
+                        <CartList 
+                            cart={cart} updateQuantity={updateQuantity} removeFromCart={removeFromCart} 
+                            getItemActivePrice={getItemActivePrice}
+                        />
+                    </div>
+                </ScrollArea>
+            </div>
         </div>
 
         {/* 3. TOTALES (Fijo Abajo) */}
-        <div className="p-4 bg-white border-t border-slate-200 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-20 shrink-0">
+        <div className="p-4 bg-white border-t border-slate-200 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] shrink-0 z-20">
             <div className="space-y-1 mb-4">
                 <div className="flex justify-between text-xs text-slate-500">
                     <span>Subtotal</span>
@@ -327,7 +326,7 @@ export const POSInterface = ({ initialProducts, division }: Props) => {
         </div>
       </div>
 
-      {/* ... (Botón Móvil y Modal - Dejar igual) ... */}
+      {/* ... MOBILE & MODAL IGUAL QUE ANTES ... */}
       {/* 📱 BOTÓN FLOTANTE MÓVIL */}
       <div className="md:hidden fixed bottom-4 left-4 right-4 z-50">
         {cart.length > 0 && (
@@ -429,7 +428,6 @@ export const POSInterface = ({ initialProducts, division }: Props) => {
   );
 };
 
-// ... CartList (mantenlo igual) ...
 const CartList = ({ cart, updateQuantity, removeFromCart, getItemActivePrice }: any) => (
     <div className="space-y-2">
         {cart.length === 0 && <p className="text-center text-slate-400 text-sm py-8">El carrito está vacío</p>}
