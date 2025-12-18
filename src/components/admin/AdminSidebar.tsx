@@ -124,7 +124,7 @@ export const AdminSidebar = ({ currentDivision }: Props) => {
     <>
       {/* 📱 MOBILE HEADER & TRIGGER */}
       <div className={cn(
-          "md:hidden fixed top-0 left-0 right-0 z-50 h-16 bg-white border-b flex items-center px-4 justify-between shadow-sm transition-colors",
+          "md:hidden fixed top-0 left-0 right-0 z-50 h-16 bg-white border-b flex items-center px-4 justify-between shadow-sm transition-colors print:hidden",
           borderClass
       )}>
          <div className="flex items-center gap-3">

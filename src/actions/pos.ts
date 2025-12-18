@@ -92,7 +92,7 @@ export async function processPOSSale(data: z.infer<typeof posOrderSchema>) {
         data: {
           receiptNumber: newReceiptNumber, // 👈 Guardamos el número oficial
           clientName: customer.name || 'Cliente Mostrador',
-          clientPhone: customer.dni || '999999999',
+          clientPhone: customer.dni || '-',
           totalAmount: total,
           totalItems: totalItems,
           status: 'DELIVERED', 

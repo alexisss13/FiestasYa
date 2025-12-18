@@ -123,3 +123,41 @@ input[type="password"]::-webkit-credentials-auto-fill-button {
   width: 0;
   margin: 0;
 }
+
+
+/* 🖨️ ESTILOS DE IMPRESIÓN (Para que la boleta salga limpia) */
+@media print {
+  /* 1. Ocultar Sidebar, Header Móvil y cualquier navegación */
+  aside, nav, header, footer, .fixed { 
+    display: none !important; 
+  }
+
+  /* 2. Resetear el contenedor del Layout */
+  body > div.flex.min-h-screen {
+    display: block !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+  }
+
+  /* 3. Resetear el Main Content (Quitar margen izquierdo) */
+  main#admin-main-content {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    border: none !important;
+  }
+
+  /* 4. Configuración de la hoja */
+  @page {
+    margin: 0;
+    size: auto;
+  }
+
+  /* 5. Fondo blanco puro */
+  body {
+    background: white !important;
+    color: black !important;
+  }
+}

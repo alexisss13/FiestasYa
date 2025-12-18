@@ -164,18 +164,20 @@ export const POSInterface = ({ initialProducts, division }: Props) => {
             icon: <CheckCircle2 className="h-5 w-5 text-green-500" />
         });
         
-        // 🧾 ABRIR BOLETA AUTOMÁTICAMENTE
-        // Usamos setTimeout para no bloquear el renderizado del toast
+        // 🧾 ABRIR BOLETA AUTOMÁTICAMENTE (MODO POPUP FORZADO)
         setTimeout(() => {
-            const width = 900;
-            const height = 800;
+            const width = 800;
+            const height = 800; // Un poco más alto para A4
             const left = (window.screen.width - width) / 2;
             const top = (window.screen.height - height) / 2;
             
+            // 🔥 El truco: 'toolbar=no,menubar=no,status=no,location=no' fuerza el popup
+            const features = `width=${width},height=${height},top=${top},left=${left},scrollbars=yes,resizable=yes,toolbar=no,menubar=no,status=no,location=no`;
+            
             window.open(
                 `/admin/orders/${result.orderId}/invoice`, 
-                'Boleta', 
-                `width=${width},height=${height},top=${top},left=${left},scrollbars=yes`
+                '_blank', // Usar _blank con features suele forzar ventana
+                features
             );
         }, 500);
 
