@@ -70,7 +70,8 @@ export async function getProducts({
       OR: query ? [
         { title: { contains: query, mode: 'insensitive' } },
         { tags: { has: query.toLowerCase() } },
-        { slug: { contains: query, mode: 'insensitive' } }
+        { slug: { contains: query, mode: 'insensitive' } },
+        { barcode: { contains: query } }
       ] : undefined,
     };
 
@@ -78,13 +79,7 @@ export async function getProducts({
     const orderBy = getOrderBy(sort);
 
     const [products, totalCount] = await prisma.$transaction([
-      prisma.product.findMany({
-        where,
-        take,
-        skip,
-        orderBy, // 👈 Ahora usa el array robusto
-        include: { category: true }
-      }),
+      prisma.product.findMany({ where, take, skip, orderBy, include: { category: true } }),
       prisma.product.count({ where })
     ]);
     
@@ -97,17 +92,7 @@ export async function getProducts({
 
     const totalPages = Math.ceil(totalCount / take);
 
-    return { 
-      success: true, 
-      data,
-      meta: {
-        page,
-        totalPages,
-        totalCount,
-        hasNextPage: page < totalPages,
-        hasPrevPage: page > 1
-      }
-    };
+    return { success: true, data, meta: { page, totalPages, totalCount, hasNextPage: page < totalPages, hasPrevPage: page > 1 } };
 
   } catch (error) {
     console.error('Error obteniendo productos:', error);
@@ -462,20 +447,53 @@ export const getNewArrivalsProducts = async ({
   }
 };
 
-// 🚀 BÚSQUEDA OPTIMIZADA PARA POS
+// =====================================================================
+// 🚀 8. BÚSQUEDA POS (Lógica Híbrida: Exacta + Parcial)
+// =====================================================================
 export async function searchProductsPOS(term: string, division: Division) {
   try {
+    // 1. Prioridad: Match Exacto (Para escáner rápido)
+    // Usamos findFirst en vez de findUnique para poder filtrar por división y estado
+    const exactMatch = await prisma.product.findFirst({
+        where: {
+            barcode: term,
+            division: division,
+            isAvailable: true
+        },
+        select: {
+            id: true,
+            title: true,
+            price: true,
+            stock: true,
+            images: true,
+            barcode: true,
+            wholesalePrice: true,
+            wholesaleMinCount: true,
+            discountPercentage: true,
+            category: { select: { name: true } }
+        }
+    });
+
+    if (exactMatch) {
+        return [exactMatch].map(p => ({
+            ...p,
+            price: Number(p.price),
+            wholesalePrice: p.wholesalePrice ? Number(p.wholesalePrice) : 0
+        }));
+    }
+
+    // 2. Si no es exacto, búsqueda amplia (Nombre, Slug, Barcode Parcial)
     const products = await prisma.product.findMany({
       where: {
         division,
         isAvailable: true,
         OR: [
           { title: { contains: term, mode: 'insensitive' } },
-          { barcode: { equals: term } }, // Búsqueda exacta de código
+          { barcode: { contains: term } }, // 👈 Esto permite escribir "775" y ver sugerencias
           { slug: { contains: term, mode: 'insensitive' } }
         ]
       },
-      take: 20, // Solo devolvemos los 20 más relevantes
+      take: 20,
       select: {
         id: true,
         title: true,
@@ -483,15 +501,20 @@ export async function searchProductsPOS(term: string, division: Division) {
         stock: true,
         images: true,
         barcode: true,
+        wholesalePrice: true,
+        wholesaleMinCount: true,
+        discountPercentage: true,
         category: { select: { name: true } }
       }
     });
 
     return products.map(p => ({
         ...p,
-        price: Number(p.price)
+        price: Number(p.price),
+        wholesalePrice: p.wholesalePrice ? Number(p.wholesalePrice) : 0
     }));
   } catch (error) {
+    console.error(error);
     return [];
   }
 }

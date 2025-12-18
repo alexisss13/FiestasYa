@@ -153,14 +153,7 @@ export const POSInterface = ({ initialProducts, division }: Props) => {
         <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm flex gap-3 items-center shrink-0 mb-4">
             <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
-                <Input 
-                    ref={searchInputRef}
-                    placeholder="Buscar producto (F1 para enfocar)" 
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    className={cn("pl-10 h-11 text-lg bg-slate-50 border-slate-200", brandRing)}
-                    autoFocus
-                />
+                <Input ref={searchInputRef} placeholder="Buscar por nombre o código..." value={query} onChange={(e) => setQuery(e.target.value)} className={cn("pl-10 h-11 text-lg bg-slate-50 border-slate-200", brandRing)} autoFocus />
             </div>
             <Button size="icon" variant="outline" className="md:hidden shrink-0 h-11 w-11" onClick={() => toast.info("Cámara pronto")}>
                 <ScanBarcode className="h-6 w-6 text-slate-600" />
