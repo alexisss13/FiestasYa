@@ -4,7 +4,7 @@ import prisma from '@/lib/prisma';
 import { Prisma, Division } from '@prisma/client';
 import { revalidatePath, unstable_cache } from 'next/cache';
 
-// Tipado fuerte
+// Tipado fuerte para uso en componentes
 export type ProductWithCategory = {
   id: string;
   title: string;
@@ -25,115 +25,96 @@ export type ProductWithCategory = {
   };
 };
 
-const getOrderBy = (sort: string): Prisma.ProductOrderByWithRelationInput => {
+const getOrderBy = (sort: string): Prisma.ProductOrderByWithRelationInput[] => {
     switch (sort) {
-        case 'price_asc': return { price: 'asc' };
-        case 'price_desc': return { price: 'desc' };
-        case 'newest': return { createdAt: 'desc' };
-        default: return { createdAt: 'desc' };
+        case 'price_asc': return [{ price: 'asc' }];
+        case 'price_desc': return [{ price: 'desc' }];
+        case 'stock_asc': return [{ stock: 'asc' }]; // Menor stock primero
+        case 'stock_desc': return [{ stock: 'desc' }]; // Mayor stock primero
+        case 'oldest': return [{ createdAt: 'asc' }];
+        case 'newest': 
+        default: return [{ createdAt: 'desc' }];
     }
 };
 
 // =====================================================================
 // 1. GET PRODUCTS (Catálogo General con Filtros)
 // =====================================================================
-const getCachedProducts = unstable_cache(
-  async (includeInactive: boolean, query: string, sort: string, division: Division) => {
-    const whereClause: Prisma.ProductWhereInput = {};
-
-    // Filtro por División (OBLIGATORIO)
-    whereClause.division = division;
-
-    if (!includeInactive) {
-      whereClause.isAvailable = true;
-    }
-
-    if (query) {
-      whereClause.OR = [
-        { title: { contains: query, mode: 'insensitive' } },
-        { description: { contains: query, mode: 'insensitive' } },
-        { tags: { has: query } }
-      ];
-    }
-
-    const products = await prisma.product.findMany({
-      where: whereClause,
-      include: { category: true },
-      orderBy: getOrderBy(sort),
-    });
-
-    // Mapeo completo
-    return products.map((product) => ({
-      id: product.id,
-      title: product.title,
-      slug: product.slug,
-      price: Number(product.price),
-      stock: product.stock,
-      images: product.images,
-      isAvailable: product.isAvailable,
-      wholesalePrice: product.wholesalePrice ? Number(product.wholesalePrice) : 0,
-      wholesaleMinCount: product.wholesaleMinCount,
-      discountPercentage: product.discountPercentage,
-      tags: product.tags,
-      division: product.division,
-      createdAt: product.createdAt,
-      category: {
-        name: product.category.name,
-        slug: product.category.slug,
-      },
-    }));
-  },
-  ['get-products-cache'], 
-  {
-    tags: ['products'], 
-    revalidate: 3600
-  }
-);
-
 interface GetProductsOptions {
     includeInactive?: boolean;
     query?: string;
     sort?: string;
     division?: Division;
+    categoryId?: string;
+    page?: number;
+    take?: number;
 }
 
 export async function getProducts({ 
   includeInactive = false, 
   query = '', 
   sort = 'newest',
-  division = 'JUGUETERIA'
+  division = 'JUGUETERIA',
+  categoryId,
+  page = 1,
+  take = 12
 }: GetProductsOptions = {}) {
   try {
-    if (includeInactive) {
-       // Modo Admin: Sin caché estricto
-       const products = await prisma.product.findMany({
-         where: division ? { division } : undefined,
-         orderBy: getOrderBy(sort),
-         include: { category: true }
-       });
-       
-       const data = products.map(p => ({
-         ...p,
-         price: Number(p.price),
-         wholesalePrice: p.wholesalePrice ? Number(p.wholesalePrice) : 0,
-         category: { name: p.category.name, slug: p.category.slug }
-       }));
-       return { success: true, data };
-    }
+    const skip = (page - 1) * take;
 
-    // Modo Tienda: Usamos la versión cacheada
-    const cachedData = await getCachedProducts(includeInactive, query, sort, division);
-    
-    return {
-      success: true,
-      data: cachedData,
+    const where: Prisma.ProductWhereInput = {
+      division,
+      isAvailable: includeInactive ? undefined : true,
+      categoryId: categoryId && categoryId !== 'all' ? categoryId : undefined, // FIX: Evitar filtrar por 'all'
+      OR: query ? [
+        { title: { contains: query, mode: 'insensitive' } },
+        { tags: { has: query.toLowerCase() } },
+        { slug: { contains: query, mode: 'insensitive' } }
+      ] : undefined,
     };
+
+    // FIX: Usamos el array de ordenamiento
+    const orderBy = getOrderBy(sort);
+
+    const [products, totalCount] = await prisma.$transaction([
+      prisma.product.findMany({
+        where,
+        take,
+        skip,
+        orderBy, // 👈 Ahora usa el array robusto
+        include: { category: true }
+      }),
+      prisma.product.count({ where })
+    ]);
+    
+    const data = products.map(p => ({
+      ...p,
+      price: Number(p.price),
+      wholesalePrice: p.wholesalePrice ? Number(p.wholesalePrice) : 0,
+      category: { name: p.category.name, slug: p.category.slug }
+    }));
+
+    const totalPages = Math.ceil(totalCount / take);
+
+    return { 
+      success: true, 
+      data,
+      meta: {
+        page,
+        totalPages,
+        totalCount,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1
+      }
+    };
+
   } catch (error) {
     console.error('Error obteniendo productos:', error);
     return {
       success: false,
       message: 'No se pudieron cargar los productos.',
       data: [],
+      meta: { page: 1, totalPages: 1, totalCount: 0, hasNextPage: false, hasPrevPage: false }
     };
   }
 }
@@ -259,7 +240,7 @@ export const getProductsByCategory = async (
 };
 
 // =====================================================================
-// 4. DELETE PRODUCT (Admin)
+// 3. DELETE PRODUCT (Admin)
 // =====================================================================
 export async function deleteProduct(id: string) {
   try {
@@ -271,14 +252,43 @@ export async function deleteProduct(id: string) {
       },
     });
     
-    // 👇 SOLUCIÓN: Agregamos 'page' como segundo argumento explícito
-    revalidatePath('/admin/products', 'page'); 
-    revalidatePath('/', 'page');
+    revalidatePath('/admin/products'); 
+    revalidatePath('/');
     
     return { success: true };
   } catch (error) {
     console.error(error);
     return { success: false, message: 'No se pudo eliminar el producto' };
+  }
+}
+
+// =====================================================================
+// 4. BULK CREATE (Carga Masiva) 🚀
+// =====================================================================
+export async function createBulkProducts(productsData: any[], division: Division) {
+  try {
+    const preparedData = productsData.map(p => ({
+        title: p.title,
+        // Slug único: titulo-random
+        slug: p.title.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '') + '-' + Math.random().toString(36).substring(2, 7),
+        description: 'Descripción pendiente...',
+        price: Number(p.price),
+        stock: Number(p.stock),
+        categoryId: p.categoryId,
+        division: division,
+        isAvailable: true,
+        images: [] 
+    }));
+
+    await prisma.product.createMany({
+        data: preparedData
+    });
+
+    revalidatePath('/admin/products');
+    return { success: true, count: preparedData.length };
+  } catch (error) {
+    console.error("Bulk Error:", error);
+    return { success: false, error: 'Error en la carga masiva' };
   }
 }
 
