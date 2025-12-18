@@ -20,6 +20,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { cn, formatCurrency } from '@/lib/utils';
+import { BarcodeControl } from '@/components/admin/BarcodeControl'; // Importar si lo usas, si no quitar
 
 // Tipos
 type POSProduct = {
@@ -45,20 +46,14 @@ export const POSInterface = ({ initialProducts, division }: Props) => {
   const brandText = isFestamas ? "text-festamas-primary" : "text-fiestasya-accent";
   const brandRing = isFestamas ? "focus-visible:ring-festamas-primary" : "focus-visible:ring-fiestasya-accent";
   
-  // 💧 SOLUCIÓN HYDRATION: Esperar montaje
   const [isMounted, setIsMounted] = useState(false);
+  useEffect(() => { setIsMounted(true); }, []);
 
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
-  // Estados
   const [query, setQuery] = useState('');
   const [products, setProducts] = useState<POSProduct[]>(initialProducts);
   const [loadingSearch, setLoadingSearch] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'YAPE' | 'PLIN' | 'EFECTIVO' | 'TARJETA'>('EFECTIVO');
-  
   const [loadingDni, setLoadingDni] = useState(false);
 
   const { 
@@ -68,7 +63,6 @@ export const POSInterface = ({ initialProducts, division }: Props) => {
 
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  // 🔍 BÚSQUEDA
   const handleSearch = useDebouncedCallback(async (term: string) => {
     if (!term) {
         setProducts(initialProducts);
@@ -80,11 +74,8 @@ export const POSInterface = ({ initialProducts, division }: Props) => {
     setLoadingSearch(false);
   }, 300);
 
-  useEffect(() => {
-    handleSearch(query);
-  }, [query, handleSearch]);
+  useEffect(() => { handleSearch(query); }, [query, handleSearch]);
 
-  // 🔫 ESCÁNER
   useEffect(() => {
     let buffer = '';
     let lastKeyTime = Date.now();
@@ -95,7 +86,6 @@ export const POSInterface = ({ initialProducts, division }: Props) => {
 
       const char = e.key;
       const currentTime = Date.now();
-
       if (currentTime - lastKeyTime > 50) buffer = ''; 
       lastKeyTime = currentTime;
 
@@ -155,14 +145,14 @@ export const POSInterface = ({ initialProducts, division }: Props) => {
   if (!isMounted) return null;
 
   return (
-    // 📏 LAYOUT FLEX: Ocupa el 100% de la altura disponible del contenedor padre
-    <div className="flex flex-col lg:flex-row h-full w-full gap-4 p-4 bg-slate-50/50">
+    // 📏 LAYOUT FLEX PRINCIPAL
+    <div className="flex flex-col lg:flex-row h-full w-full bg-slate-50/50">
       
       {/* 👈 IZQUIERDA: CATÁLOGO */}
-      <div className="flex-1 flex flex-col gap-4 min-w-0 h-full overflow-hidden">
+      <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden p-4">
         
-        {/* HEADER: Buscador */}
-        <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm flex gap-3 items-center shrink-0">
+        {/* HEADER */}
+        <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm flex gap-3 items-center shrink-0 mb-4">
             <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
                 <Input 
@@ -180,72 +170,76 @@ export const POSInterface = ({ initialProducts, division }: Props) => {
         </div>
 
         {/* GRID PRODUCTOS */}
-        <ScrollArea className="flex-1 bg-white rounded-xl border border-slate-200 shadow-sm p-4 h-full">
-            {products.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full text-slate-300 min-h-[300px]">
-                    <Search className="h-12 w-12 mb-2 opacity-20" />
-                    <p>No se encontraron productos</p>
-                </div>
-            ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 pb-20 md:pb-0">
-                    {products.map((product) => (
-                        <button 
-                            key={product.id}
-                            onClick={() => product.stock > 0 ? addToCart(product as any) : toast.error("Sin stock")}
-                            className={cn(
-                                "flex flex-col bg-white rounded-xl border border-slate-200 overflow-hidden active:scale-[0.98] transition-all hover:shadow-md text-left relative h-full",
-                                product.stock <= 0 && "opacity-60 grayscale"
-                            )}
-                        >
-                            <div className="aspect-square relative bg-slate-100 border-b border-slate-100">
-                                {product.images[0] ? (
-                                    <Image src={product.images[0]} alt="" fill className="object-cover" />
-                                ) : (
-                                    <div className="flex items-center justify-center h-full"><ScanBarcode className="h-8 w-8 text-slate-300"/></div>
-                                )}
-                                <div className="absolute top-1 right-1 flex flex-col items-end gap-1">
-                                    <Badge className={cn("px-1.5 py-0 text-[10px] shadow-sm", product.stock > 0 ? "bg-white text-slate-700 hover:bg-white" : "bg-red-500 text-white")}>
-                                        {product.stock}
-                                    </Badge>
-                                    {(product.discountPercentage ?? 0) > 0 && (
-                                        <Badge className={cn("px-1.5 py-0 text-[10px] text-white border-none", isFestamas ? "bg-red-500" : "bg-pink-500")}>
-                                            -{product.discountPercentage}%
-                                        </Badge>
+        <div className="flex-1 min-h-0 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden mb-20 lg:mb-0">
+            <ScrollArea className="h-full">
+                <div className="p-4"> 
+                    {products.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center h-full text-slate-300 min-h-[300px]">
+                            <Search className="h-12 w-12 mb-2 opacity-20" />
+                            <p>No se encontraron productos</p>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
+                            {products.map((product) => (
+                                <button 
+                                    key={product.id}
+                                    onClick={() => product.stock > 0 ? addToCart(product as any) : toast.error("Sin stock")}
+                                    className={cn(
+                                        "flex flex-col bg-white rounded-xl border border-slate-200 overflow-hidden active:scale-[0.98] transition-all hover:shadow-md text-left relative h-full group",
+                                        product.stock <= 0 && "opacity-60 grayscale"
                                     )}
-                                </div>
-                            </div>
-                            <div className="p-2.5 flex flex-col justify-between flex-1 gap-1">
-                                <p className="text-xs font-semibold text-slate-700 line-clamp-2 leading-tight min-h-[2.5em]">{product.title}</p>
-                                <div className="flex items-end justify-between">
-                                    <div className="flex flex-col">
-                                        {(product.discountPercentage ?? 0) > 0 && (
-                                            <span className="text-[10px] text-slate-400 line-through">
-                                                {formatCurrency(Number(product.price))}
-                                            </span>
+                                >
+                                    <div className="aspect-square relative bg-slate-100 border-b border-slate-100 group-hover:opacity-90 transition-opacity">
+                                        {product.images[0] ? (
+                                            <Image src={product.images[0]} alt="" fill className="object-cover" />
+                                        ) : (
+                                            <div className="flex items-center justify-center h-full"><ScanBarcode className="h-8 w-8 text-slate-300"/></div>
                                         )}
-                                        <span className={cn("font-bold text-sm", brandText)}>
-                                            {formatCurrency(Number(product.price) * (1 - (product.discountPercentage || 0) / 100))}
-                                        </span>
+                                        <div className="absolute top-1 right-1 flex flex-col items-end gap-1">
+                                            <Badge className={cn("px-1.5 py-0 text-[10px] shadow-sm", product.stock > 0 ? "bg-white text-slate-700 hover:bg-white" : "bg-red-500 text-white")}>
+                                                {product.stock}
+                                            </Badge>
+                                            {(product.discountPercentage ?? 0) > 0 && (
+                                                <Badge className={cn("px-1.5 py-0 text-[10px] text-white border-none", isFestamas ? "bg-red-500" : "bg-pink-500")}>
+                                                    -{product.discountPercentage}%
+                                                </Badge>
+                                            )}
+                                        </div>
                                     </div>
-                                    {(product.wholesalePrice && product.wholesalePrice > 0) && (
-                                        <span className="text-[9px] text-slate-400 bg-slate-100 px-1 rounded" title={`Mínimo: ${product.wholesaleMinCount}`}>
-                                            May: {formatCurrency(Number(product.wholesalePrice))}
-                                        </span>
-                                    )}
-                                </div>
-                            </div>
-                        </button>
-                    ))}
+                                    <div className="p-2.5 flex flex-col justify-between flex-1 gap-1">
+                                        <p className="text-xs font-semibold text-slate-700 line-clamp-2 leading-tight min-h-[2.5em]">{product.title}</p>
+                                        <div className="flex items-end justify-between">
+                                            <div className="flex flex-col">
+                                                {(product.discountPercentage ?? 0) > 0 && (
+                                                    <span className="text-[10px] text-slate-400 line-through">
+                                                        {formatCurrency(Number(product.price))}
+                                                    </span>
+                                                )}
+                                                <span className={cn("font-bold text-sm", brandText)}>
+                                                    {formatCurrency(Number(product.price) * (1 - (product.discountPercentage || 0) / 100))}
+                                                </span>
+                                            </div>
+                                            {(product.wholesalePrice && product.wholesalePrice > 0) && (
+                                                <span className="text-[9px] text-slate-400 bg-slate-100 px-1 rounded" title={`Mínimo: ${product.wholesaleMinCount}`}>
+                                                    May: {formatCurrency(Number(product.wholesalePrice))}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                </button>
+                            ))}
+                        </div>
+                    )}
                 </div>
-            )}
-        </ScrollArea>
+            </ScrollArea>
+        </div>
       </div>
 
-      {/* 👉 DERECHA: TICKET Y CLIENTE */}
-      <div className="hidden lg:flex flex-col w-[380px] xl:w-[420px] gap-4 shrink-0 h-full overflow-hidden">
+      {/* 👉 DERECHA: TICKET Y CLIENTE (Fijo Web) */}
+      <div className="hidden lg:flex flex-col w-[380px] xl:w-[420px] shrink-0 h-full border-l border-slate-200 bg-white z-10 shadow-xl">
         
-        {/* SECCIÓN CLIENTE */}
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-3 shrink-0">
+        {/* 1. SECCIÓN CLIENTE (Fijo Arriba) */}
+        <div className="p-4 border-b border-slate-100 bg-white space-y-3 shrink-0">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
                 <div className="flex items-center gap-2 text-slate-800 font-bold">
                     <User className={cn("h-5 w-5", brandText)} /> Cliente
@@ -254,7 +248,6 @@ export const POSInterface = ({ initialProducts, division }: Props) => {
                     <Eraser className="h-3 w-3 mr-1"/> Limpiar
                 </Button>
             </div>
-            
             <div className="flex gap-2">
                 <div className="relative flex-1">
                     <Input 
@@ -267,17 +260,12 @@ export const POSInterface = ({ initialProducts, division }: Props) => {
                         className="font-mono bg-slate-50 border-slate-200"
                         maxLength={8}
                     />
-                    {loadingDni && (
-                        <div className="absolute right-2 top-2.5">
-                            <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
-                        </div>
-                    )}
+                    {loadingDni && <Loader2 className="absolute right-2 top-2.5 h-4 w-4 animate-spin text-slate-400" />}
                 </div>
                 <Button onClick={handleDniSearch} disabled={loadingDni || customer.dni.length !== 8} size="icon" variant="secondary" className="border border-slate-200 shadow-sm">
                     <Search className="h-4 w-4" />
                 </Button>
             </div>
-
             <Input 
                 placeholder="Nombre del Cliente" 
                 value={customer.name}
@@ -286,9 +274,10 @@ export const POSInterface = ({ initialProducts, division }: Props) => {
             />
         </div>
 
-        {/* LISTA CARRITO */}
-        <div className="flex-1 bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col overflow-hidden min-h-0">
-            <div className="p-3 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 shrink-0">
+        {/* 2. AREA CENTRAL (Header Items + Lista con Scroll) */}
+        {/* Usamos flex-1 y min-h-0 para que ocupe el espacio disponible y active scroll interno */}
+        <div className="flex-1 flex flex-col min-h-0 bg-slate-50/30 relative">
+            <div className="p-3 border-b border-slate-100 flex justify-between items-center bg-white/50 shrink-0">
                 <div className="flex items-center gap-2 font-bold text-slate-700 text-sm">
                     <ShoppingCart className="h-4 w-4" /> Items <Badge variant="secondary" className="h-5 px-1.5 min-w-[20px] justify-center bg-white border border-slate-200 text-slate-600">{getItemsCount()}</Badge>
                 </div>
@@ -297,43 +286,48 @@ export const POSInterface = ({ initialProducts, division }: Props) => {
                 </Button>
             </div>
 
-            <ScrollArea className="flex-1 p-2 h-full">
-                <CartList 
-                    cart={cart} updateQuantity={updateQuantity} removeFromCart={removeFromCart} 
-                    getItemActivePrice={getItemActivePrice}
-                />
-            </ScrollArea>
-
-            {/* TOTALES */}
-            <div className="p-4 bg-white border-t border-slate-100 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-10 shrink-0">
-                <div className="space-y-1 mb-4">
-                    <div className="flex justify-between text-xs text-slate-500">
-                        <span>Subtotal</span>
-                        <span>{formatCurrency(getTotal() / 1.18)}</span>
-                    </div>
-                    <div className="flex justify-between text-xs text-slate-500">
-                        <span>IGV (18%)</span>
-                        <span>{formatCurrency(getTotal() - (getTotal() / 1.18))}</span>
-                    </div>
-                    <div className="h-px bg-slate-100 my-2"/>
-                    <div className="flex justify-between text-2xl font-black text-slate-900 items-end">
-                        <span className="text-sm font-medium text-slate-500 mb-1">Total</span>
-                        <span>{formatCurrency(getTotal())}</span>
-                    </div>
+            {/* 🔥 FIX DEL SCROLL AQUÍ: h-full en ScrollArea */}
+            <ScrollArea className="flex-1 h-full w-full">
+                {/* 🔥 FIX DEL ÚLTIMO ITEM: Padding inferior grande (pb-6) */}
+                <div className="p-3 pb-6"> 
+                    <CartList 
+                        cart={cart} updateQuantity={updateQuantity} removeFromCart={removeFromCart} 
+                        getItemActivePrice={getItemActivePrice}
+                    />
                 </div>
+            </ScrollArea>
+        </div>
 
-                <Button 
-                    className={cn("w-full h-12 text-base font-bold shadow-lg transition-all active:scale-[0.98]", brandBg)} 
-                    onClick={() => setIsCheckoutOpen(true)}
-                    disabled={cart.length === 0}
-                >
-                    <CreditCard className="mr-2 h-5 w-5" /> 
-                    Cobrar
-                </Button>
+        {/* 3. TOTALES (Fijo Abajo) */}
+        <div className="p-4 bg-white border-t border-slate-200 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-20 shrink-0">
+            <div className="space-y-1 mb-4">
+                <div className="flex justify-between text-xs text-slate-500">
+                    <span>Subtotal</span>
+                    <span>{formatCurrency(getTotal() / 1.18)}</span>
+                </div>
+                <div className="flex justify-between text-xs text-slate-500">
+                    <span>IGV (18%)</span>
+                    <span>{formatCurrency(getTotal() - (getTotal() / 1.18))}</span>
+                </div>
+                <div className="h-px bg-slate-100 my-2"/>
+                <div className="flex justify-between text-2xl font-black text-slate-900 items-end">
+                    <span className="text-sm font-medium text-slate-500 mb-1">Total</span>
+                    <span>{formatCurrency(getTotal())}</span>
+                </div>
             </div>
+
+            <Button 
+                className={cn("w-full h-12 text-base font-bold shadow-lg transition-all active:scale-[0.98]", brandBg)} 
+                onClick={() => setIsCheckoutOpen(true)}
+                disabled={cart.length === 0}
+            >
+                <CreditCard className="mr-2 h-5 w-5" /> 
+                Cobrar
+            </Button>
         </div>
       </div>
 
+      {/* ... (Botón Móvil y Modal - Dejar igual) ... */}
       {/* 📱 BOTÓN FLOTANTE MÓVIL */}
       <div className="md:hidden fixed bottom-4 left-4 right-4 z-50">
         {cart.length > 0 && (
@@ -350,17 +344,15 @@ export const POSInterface = ({ initialProducts, division }: Props) => {
         )}
       </div>
 
-      {/* 🧾 MODAL DE CHECKOUT (Unificado) */}
+      {/* 🧾 MODAL DE CHECKOUT */}
       <Dialog open={isCheckoutOpen} onOpenChange={setIsCheckoutOpen}>
         <DialogContent className="sm:max-w-[450px] p-0 overflow-hidden gap-0 border-none shadow-2xl">
-            {/* Header con color de marca */}
             <DialogHeader className={cn("p-4 text-white", brandBg)}>
                 <DialogTitle className="flex items-center gap-2 text-lg">
                     <ShoppingCart className="h-5 w-5" /> Resumen de Venta
                 </DialogTitle>
             </DialogHeader>
             
-            {/* CLIENTE EN MÓVIL (Dentro del modal) */}
             <div className="p-4 bg-white border-b border-slate-100 lg:hidden space-y-3">
                 <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Datos del Cliente</p>
                 <div className="flex gap-2">
@@ -437,7 +429,7 @@ export const POSInterface = ({ initialProducts, division }: Props) => {
   );
 };
 
-// --- COMPONENTE LISTA CARRITO ---
+// ... CartList (mantenlo igual) ...
 const CartList = ({ cart, updateQuantity, removeFromCart, getItemActivePrice }: any) => (
     <div className="space-y-2">
         {cart.length === 0 && <p className="text-center text-slate-400 text-sm py-8">El carrito está vacío</p>}

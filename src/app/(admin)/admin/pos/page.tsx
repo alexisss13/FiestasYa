@@ -34,8 +34,8 @@ export default async function POSPage() {
   }));
 
   return (
-    // 🎨 FIX LAYOUT: Rompemos el padding del padre con márgenes negativos
-    <div className="w-auto h-[calc(100vh-64px)] -m-8 relative overflow-hidden bg-slate-50">
+    // 👇 FIX: h-screen para altura exacta y -m-8 para romper el padding del AdminLayout
+    <div className="w-auto h-screen -m-4 md:-m-8 bg-slate-50 overflow-hidden">
       <POSInterface 
         initialProducts={formattedProducts} 
         division={division} 
