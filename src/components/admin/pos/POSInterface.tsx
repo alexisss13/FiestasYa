@@ -137,21 +137,25 @@ export const POSInterface = ({ initialProducts, division }: Props) => {
     setProcessingSale(true);
 
     try {
-      // Preparamos los items con su precio real activo (considerando descuentos/mayorista)
       const itemsPayload = cart.map(item => ({
         productId: item.id,
         quantity: item.quantity,
         price: getItemActivePrice(item)
       }));
 
+      // Determinar la "división" actual para el logo (basado en lo que el usuario está viendo)
+      // Si `division` es 'JUGUETERIA' -> Festamas, sino FiestasYa.
+      // O puedes pasar el prop `division` que ya recibes en el componente.
+      
       const result = await processPOSSale({
         items: itemsPayload,
         total: getTotal(),
         paymentMethod,
+        division: division === 'JUGUETERIA' ? 'Festamas' : 'FiestasYa', // 👈 Enviamos la marca
         customer: {
           name: customer.name,
           dni: customer.dni,
-          address: customer.address // Si lo añadieras en el futuro
+          address: customer.address 
         }
       });
 
@@ -159,11 +163,26 @@ export const POSInterface = ({ initialProducts, division }: Props) => {
         toast.success(result.message, {
             icon: <CheckCircle2 className="h-5 w-5 text-green-500" />
         });
+        
+        // 🧾 ABRIR BOLETA AUTOMÁTICAMENTE
+        // Usamos setTimeout para no bloquear el renderizado del toast
+        setTimeout(() => {
+            const width = 900;
+            const height = 800;
+            const left = (window.screen.width - width) / 2;
+            const top = (window.screen.height - height) / 2;
+            
+            window.open(
+                `/admin/orders/${result.orderId}/invoice`, 
+                'Boleta', 
+                `width=${width},height=${height},top=${top},left=${left},scrollbars=yes`
+            );
+        }, 500);
+
         clearCart();
         clearCustomer();
         setIsCheckoutOpen(false);
-        setQuery(''); // Limpiar búsqueda
-        // Opcional: Recargar productos locales para ver el stock bajar visualmente
+        setQuery(''); 
         handleSearch(''); 
       } else {
         toast.error(result.message || 'Error al procesar la venta');

@@ -3,16 +3,17 @@
 import prisma from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
+import { auth } from '@/auth';
 
-// Esquema de validación para los datos que vienen del POS
 const posOrderSchema = z.object({
   items: z.array(z.object({
     productId: z.string(),
     quantity: z.number().min(1),
-    price: z.number().min(0), // Precio final (unitario) calculado por el POS
+    price: z.number().min(0),
   })),
   total: z.number().min(0),
   paymentMethod: z.enum(['YAPE', 'PLIN', 'EFECTIVO', 'TARJETA']),
+  division: z.string().optional(),
   customer: z.object({
     name: z.string().optional(),
     dni: z.string().optional(),
@@ -22,15 +23,20 @@ const posOrderSchema = z.object({
 
 export async function processPOSSale(data: z.infer<typeof posOrderSchema>) {
   try {
+    const session = await auth();
+    if (!session?.user?.email) {
+      return { success: false, message: 'No autorizado: Debes iniciar sesión para vender.' };
+    }
+    const sellerName = session.user.name || session.user.email;
+
     const validation = posOrderSchema.safeParse(data);
     if (!validation.success) {
       return { success: false, message: 'Datos de venta inválidos' };
     }
 
-    const { items, total, paymentMethod, customer } = data;
+    const { items, total, paymentMethod, customer, division } = data;
 
-    // 1. Validar Stock (Backend Authority)
-    // No confiamos ciegamente en el frontend, verificamos la BD.
+    // 1. Validar Stock
     const productIds = items.map(i => i.productId);
     const dbProducts = await prisma.product.findMany({
       where: { id: { in: productIds } },
@@ -49,24 +55,48 @@ export async function processPOSSale(data: z.infer<typeof posOrderSchema>) {
       }
     }
 
-    // 2. Transacción Atómica (Crear Orden + Restar Stock)
+    // 2. Transacción (Crear Orden + Generar Correlativo + Restar Stock)
     const order = await prisma.$transaction(async (tx) => {
-      // Calculamos el total de items
+      // --- LÓGICA DE CORRELATIVO ---
+      // Contamos cuántas órdenes tienen número de boleta para generar el siguiente
+      // OJO: Esto asume Serie B001 única para todos. Si quisieras separar series por tienda, filtraríamos aquí.
+      const lastOrder = await tx.order.findFirst({
+        where: { receiptNumber: { not: null } },
+        orderBy: { createdAt: 'desc' } // Buscamos la última creada
+      });
+
+      // Si la última fue B001-00000045, extraemos 45. Si no hay, empezamos en 1.
+      let nextNumber = 1;
+      if (lastOrder && lastOrder.receiptNumber) {
+        const parts = lastOrder.receiptNumber.split('-');
+        const sequence = parseInt(parts[1]);
+        if (!isNaN(sequence)) {
+          nextNumber = sequence + 1;
+        }
+      }
+
+      // Formato: B001-00000001 (PadStart rellena con ceros a la izquierda)
+      const newReceiptNumber = `B001-${nextNumber.toString().padStart(8, '0')}`;
+      // -----------------------------
+
       const totalItems = items.reduce((acc, item) => acc + item.quantity, 0);
+      const notes = `
+        [VENTA POS]
+        Vendedor: ${sellerName}
+        Pago: ${paymentMethod}
+        Tienda: ${division || 'General'}
+        DNI Cliente: ${customer.dni || 'S/D'}
+      `.trim();
 
-      // Preparamos la nota con info del POS
-      // "POS - [YAPE] - DNI: 12345678"
-      const notes = `Venta POS - Pago: ${paymentMethod} | DNI: ${customer.dni || 'S/D'} | Dirección: ${customer.address || '-'}`;
-
-      // Crear la orden
       const newOrder = await tx.order.create({
         data: {
+          receiptNumber: newReceiptNumber, // 👈 Guardamos el número oficial
           clientName: customer.name || 'Cliente Mostrador',
-          clientPhone: '999999999', // Default para POS, ya que es presencial
+          clientPhone: customer.dni || '999999999',
           totalAmount: total,
           totalItems: totalItems,
-          status: 'DELIVERED', // En POS la entrega es inmediata
-          isPaid: true,        // En POS el pago es inmediato
+          status: 'DELIVERED', 
+          isPaid: true,        
           deliveryMethod: 'PICKUP',
           shippingAddress: customer.address || '',
           shippingCost: 0,
@@ -81,7 +111,7 @@ export async function processPOSSale(data: z.infer<typeof posOrderSchema>) {
         },
       });
 
-      // Restar el stock
+      // Descontar stock
       for (const item of items) {
         await tx.product.update({
           where: { id: item.productId },
@@ -92,9 +122,7 @@ export async function processPOSSale(data: z.infer<typeof posOrderSchema>) {
       return newOrder;
     });
 
-    // 3. Revalidar rutas para actualizar inventario en otras ventanas
     revalidatePath('/admin/products');
-    revalidatePath('/admin/dashboard');
     
     return { success: true, orderId: order.id, message: '¡Venta registrada con éxito!' };
 

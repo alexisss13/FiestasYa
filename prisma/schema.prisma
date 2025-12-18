@@ -172,6 +172,7 @@ model Category {
 // 🛍️ PEDIDOS
 model Order {
   id             String      @id @default(uuid())
+  receiptNumber String?     @unique
   totalAmount    Decimal     @db.Decimal(10, 2)
   totalItems     Int
   status         OrderStatus @default(PENDING)
