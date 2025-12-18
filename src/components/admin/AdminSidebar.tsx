@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { 
   LayoutDashboard, Package, ShoppingCart, Settings, LogOut, 
-  Tags, Ticket, Images, Store, Menu, ChevronLeft, ChevronRight 
+  Tags, Ticket, Images, Store, Menu, ChevronLeft, ChevronRight, Calculator 
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetHeader } from '@/components/ui/sheet'; // 👈 Importamos SheetTitle y SheetHeader
@@ -16,6 +16,7 @@ import { Division } from '@prisma/client';
 
 const navItems = [
   { href: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/admin/pos', label: 'Punto de Venta', icon: Calculator },
   { href: '/admin/orders', label: 'Pedidos', icon: ShoppingCart },
   { href: '/admin/products', label: 'Productos', icon: Package },
   { href: '/admin/categories', label: 'Categorías', icon: Tags },

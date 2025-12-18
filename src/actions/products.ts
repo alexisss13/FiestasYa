@@ -19,6 +19,7 @@ export type ProductWithCategory = {
   tags: string[];
   division: Division;
   createdAt: Date;
+  barcode: string | null;
   category: {
     name: string;
     slug: string;
@@ -460,3 +461,37 @@ export const getNewArrivalsProducts = async ({
     return null;
   }
 };
+
+// 🚀 BÚSQUEDA OPTIMIZADA PARA POS
+export async function searchProductsPOS(term: string, division: Division) {
+  try {
+    const products = await prisma.product.findMany({
+      where: {
+        division,
+        isAvailable: true,
+        OR: [
+          { title: { contains: term, mode: 'insensitive' } },
+          { barcode: { equals: term } }, // Búsqueda exacta de código
+          { slug: { contains: term, mode: 'insensitive' } }
+        ]
+      },
+      take: 20, // Solo devolvemos los 20 más relevantes
+      select: {
+        id: true,
+        title: true,
+        price: true,
+        stock: true,
+        images: true,
+        barcode: true,
+        category: { select: { name: true } }
+      }
+    });
+
+    return products.map(p => ({
+        ...p,
+        price: Number(p.price)
+    }));
+  } catch (error) {
+    return [];
+  }
+}
