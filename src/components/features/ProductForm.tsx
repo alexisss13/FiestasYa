@@ -83,16 +83,42 @@ export function ProductForm({ product, categories, defaultDivision = 'JUGUETERIA
     groupTag !== initialData.groupTag ||
     tags !== initialData.tags;
 
-  // EFECTO: Advertencia de salida (Navegador)
+  // 1. EFECTO: Advertencia de salida del navegador (Cerrar pestaña / F5)
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (isDirty) {
         e.preventDefault();
-        e.returnValue = ''; // Estándar moderno
+        e.returnValue = ''; 
       }
     };
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [isDirty]);
+
+  // 2. EFECTO: Intercepción de Navegación Interna (Links de Next.js)
+  useEffect(() => {
+    if (!isDirty) return;
+
+    // Función para interceptar clicks en enlaces
+    const handleAnchorClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      const anchor = target.closest('a');
+      
+      // Si es un link y no tiene target blank (nueva pestaña)
+      if (anchor && anchor.target !== '_blank') {
+        if (!window.confirm('Tienes cambios sin guardar. ¿Seguro que quieres salir?')) {
+          e.preventDefault(); // Cancelar navegación
+          e.stopPropagation();
+        }
+      }
+    };
+
+    // Escuchamos en la fase de captura para ser los primeros
+    document.addEventListener('click', handleAnchorClick, true);
+    
+    return () => {
+      document.removeEventListener('click', handleAnchorClick, true);
+    };
   }, [isDirty]);
 
   const currentDivision = product?.division || defaultDivision;
@@ -106,7 +132,7 @@ export function ProductForm({ product, categories, defaultDivision = 'JUGUETERIA
 
     const formData = new FormData(e.currentTarget);
     
-    // Agregamos manualmente los estados controlados que no son inputs directos o necesitan formato
+    // Agregamos manualmente los estados controlados
     images.forEach(img => formData.append('images', img));
     if (isAvailable) formData.set('isAvailable', 'on');
     formData.set('division', currentDivision);
@@ -118,7 +144,7 @@ export function ProductForm({ product, categories, defaultDivision = 'JUGUETERIA
     if (result.success) {
       toast.success(product ? 'Producto actualizado' : 'Producto creado');
       
-      // Actualizamos el snapshot inicial para que deje de estar sucio
+      // Actualizamos el snapshot para "limpiar" el formulario
       setInitialData({
         images, isAvailable, color, barcode, title, slug, categoryId, description,
         price, discount, stock, wholesalePrice, wholesaleMin, groupTag, tags
@@ -137,11 +163,21 @@ export function ProductForm({ product, categories, defaultDivision = 'JUGUETERIA
       setBarcode(code);
   };
 
-  // Auto-generar slug al escribir título (solo si es nuevo)
   const handleTitleChange = (val: string) => {
     setTitle(val);
     if (!product) {
         setSlug(val.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, ''));
+    }
+  };
+
+  // Función para cancelar manualmente (ignora la protección)
+  const handleCancel = () => {
+    if (isDirty) {
+        if (window.confirm('¿Descartar cambios y salir?')) {
+            router.back();
+        }
+    } else {
+        router.back();
     }
   };
 
@@ -156,22 +192,28 @@ export function ProductForm({ product, categories, defaultDivision = 'JUGUETERIA
                 <span className={cn("text-xs px-2 py-1 rounded-md bg-slate-100 uppercase font-extrabold tracking-wide", brandTextClass)}>
                     {isFestamas ? 'Festamas' : 'FiestasYa'}
                 </span>
-                {/* 🚨 AVISO VISUAL DE CAMBIOS */}
+                {/* 🚨 AVISO VISUAL */}
                 {isDirty && (
-                    <span className="text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded-full animate-pulse border border-amber-200 font-medium">
-                        Cambios sin guardar
+                    <span className="text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded-full animate-pulse border border-amber-200 font-medium flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full bg-amber-500"/> Cambios sin guardar
                     </span>
                 )}
             </h2>
         </div>
         <div className="flex gap-3 w-full md:w-auto">
-            <Button type="button" variant="outline" onClick={() => router.back()} disabled={loading} className="flex-1 md:flex-none">
+            <Button 
+                type="button" 
+                variant="outline" 
+                onClick={handleCancel} // Usamos nuestra función personalizada
+                disabled={loading} 
+                className="flex-1 md:flex-none"
+            >
                 Cancelar
             </Button>
             <Button 
                 type="submit" 
                 className={cn("text-white flex-1 md:flex-none min-w-[140px]", isFestamas ? "bg-festamas-primary hover:bg-festamas-primary/90" : "bg-fiestasya-accent hover:bg-fiestasya-accent/90")} 
-                disabled={loading || !isDirty} // 🔒 Deshabilitado si no hay cambios
+                disabled={loading || !isDirty} 
             >
                 {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                 Guardar
@@ -179,6 +221,7 @@ export function ProductForm({ product, categories, defaultDivision = 'JUGUETERIA
         </div>
       </div>
 
+      {/* ... (El resto del formulario se mantiene igual) ... */}
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 md:gap-8">
         
         {/* COLUMNA IZQUIERDA */}

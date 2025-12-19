@@ -27,10 +27,19 @@ export default async function CategoriesPage() {
           </p>
         </div>
         
-        <Button asChild variant="outline" className="w-full md:w-auto bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900 shadow-sm h-11 px-6">
+        {/* 👇 BOTÓN ACTUALIZADO CON COLOR DE MARCA (IGUAL QUE PRODUCTOS) */}
+        <Button 
+          asChild 
+          className={cn(
+            "w-full md:w-auto h-11 px-6 shadow-lg transition-all active:scale-[0.98] text-white font-bold",
+            isFestamas 
+              ? "bg-festamas-primary hover:bg-festamas-primary/90" 
+              : "bg-fiestasya-accent hover:bg-fiestasya-accent/90"
+          )}
+        >
           <Link href="/admin/categories/new">
-            <Plus className="mr-2 h-5 w-5 text-slate-400" />
-            <span className="font-semibold">Nueva Categoría</span>
+            <Plus className="mr-2 h-5 w-5" />
+            Nueva Categoría
           </Link>
         </Button>
       </div>

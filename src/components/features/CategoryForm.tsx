@@ -21,21 +21,25 @@ export function CategoryForm({ category, defaultDivision = 'JUGUETERIA' }: Props
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   
-  // Estado inicial para comparar cambios
+  // ESTADOS DEL FORMULARIO
+  const [name, setName] = useState(category?.name || '');
+  const [slug, setSlug] = useState(category?.slug || '');
+  const [image, setImage] = useState(category?.image || '');
+
+  // ESTADO INICIAL (SNAPSHOT) PARA DETECTAR CAMBIOS
   const [initialData, setInitialData] = useState({
     name: category?.name || '',
     slug: category?.slug || '',
     image: category?.image || ''
   });
-
-  const [name, setName] = useState(initialData.name);
-  const [slug, setSlug] = useState(initialData.slug);
-  const [image, setImage] = useState(initialData.image);
   
-  // Detectar si hay cambios sin guardar
-  const isDirty = name !== initialData.name || slug !== initialData.slug || image !== initialData.image;
+  // LÓGICA IS DIRTY
+  const isDirty = 
+    name !== initialData.name || 
+    slug !== initialData.slug || 
+    image !== initialData.image;
 
-  // Advertencia al intentar cerrar la pestaña
+  // 1. EFECTO: Advertencia de salida del navegador (Cerrar pestaña / F5)
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (isDirty) {
@@ -45,6 +49,27 @@ export function CategoryForm({ category, defaultDivision = 'JUGUETERIA' }: Props
     };
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [isDirty]);
+
+  // 2. EFECTO: Intercepción de Navegación Interna (Links de Next.js)
+  useEffect(() => {
+    if (!isDirty) return;
+
+    const handleAnchorClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      const anchor = target.closest('a');
+      
+      if (anchor && anchor.target !== '_blank') {
+        // Usamos confirm nativo porque es síncrono y bloquea la navegación
+        if (!window.confirm('Tienes cambios sin guardar. ¿Seguro que quieres salir?')) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      }
+    };
+
+    document.addEventListener('click', handleAnchorClick, true);
+    return () => document.removeEventListener('click', handleAnchorClick, true);
   }, [isDirty]);
   
   const currentDivision = category?.division || defaultDivision;
@@ -69,8 +94,10 @@ export function CategoryForm({ category, defaultDivision = 'JUGUETERIA' }: Props
 
     if (result.success) {
       toast.success(category ? 'Categoría actualizada' : 'Categoría creada');
-      // Actualizamos estado inicial para que no salga alerta
-      setInitialData({ name, slug, image }); 
+      
+      // Actualizamos el snapshot para "limpiar" el formulario
+      setInitialData({ name, slug, image });
+      
       router.push('/admin/categories');
       router.refresh();
     } else {
@@ -87,6 +114,17 @@ export function CategoryForm({ category, defaultDivision = 'JUGUETERIA' }: Props
     }
   };
 
+  // Función para cancelar manualmente
+  const handleCancel = () => {
+    if (isDirty) {
+        if (window.confirm('¿Descartar cambios y salir?')) {
+            router.back();
+        }
+    } else {
+        router.back();
+    }
+  };
+
   return (
     <form onSubmit={handleSubmit} className="w-full max-w-[1200px] space-y-6 md:space-y-8 pb-20">
       
@@ -98,9 +136,10 @@ export function CategoryForm({ category, defaultDivision = 'JUGUETERIA' }: Props
                 <span className={cn("text-xs px-2 py-1 rounded-md bg-slate-100 uppercase font-extrabold tracking-wide", brandTextClass)}>
                     {isFestamas ? 'Festamas' : 'FiestasYa'}
                 </span>
+                {/* 🚨 AVISO VISUAL */}
                 {isDirty && (
-                    <span className="text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded-full animate-pulse border border-amber-200">
-                        Cambios sin guardar
+                    <span className="text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded-full animate-pulse border border-amber-200 font-medium flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full bg-amber-500"/> Cambios sin guardar
                     </span>
                 )}
             </h2>
@@ -109,7 +148,7 @@ export function CategoryForm({ category, defaultDivision = 'JUGUETERIA' }: Props
             <Button 
                 type="button" 
                 variant="outline" 
-                onClick={() => router.back()} 
+                onClick={handleCancel} 
                 disabled={loading} 
                 className="flex-1 md:flex-none"
             >
