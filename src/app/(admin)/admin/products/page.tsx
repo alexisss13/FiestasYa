@@ -140,6 +140,9 @@ export default async function AdminProductsPage({ searchParams }: Props) {
                       barcode={product.barcode} 
                       title={product.title} 
                       price={Number(product.price)}
+                      wholesalePrice={Number(product.wholesalePrice)}
+                      wholesaleMinCount={product.wholesaleMinCount}
+                      discountPercentage={product.discountPercentage}
                       variant="ghost"
                       className="h-10 w-10 hover:bg-slate-100 rounded-xl border border-transparent hover:border-slate-200"
                   />
