@@ -4,49 +4,89 @@ import prisma from '@/lib/prisma';
 import { BannerPosition, Division } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
 
-export async function createBanner(data: {
+// Esquema de validación para el servidor (opcional pero recomendado)
+interface BannerData {
   title: string;
   imageUrl: string;
-  mobileUrl?: string; // 👈 Agregamos este campo opcional
+  mobileUrl?: string;
   link?: string;
   position: BannerPosition;
   division: Division;
-}) {
+}
+
+export async function createBanner(data: BannerData) {
   try {
     const banner = await prisma.banner.create({
       data: {
         ...data,
         active: true,
-        order: 0,
+        order: 0, // Se pone al principio o final según lógica, aquí 0 por defecto
       },
     });
-    revalidatePath('/'); 
+    revalidatePath('/');
+    revalidatePath('/admin/banners');
     return { success: true, data: banner };
   } catch (error) {
-    console.error(error);
-    return { success: false, error: 'Error al crear banner' };
+    console.error('Error createBanner:', error);
+    return { success: false, error: 'Error al crear el banner.' };
   }
 }
 
-// Obtener todos los banners para listarlos en el Admin
-export async function getAdminBanners() {
+export async function updateBanner(id: string, data: Partial<BannerData>) {
   try {
-    const banners = await prisma.banner.findMany({
-      orderBy: { createdAt: 'desc' },
+    const banner = await prisma.banner.update({
+      where: { id },
+      data,
     });
-    return { success: true, data: banners };
+    revalidatePath('/');
+    revalidatePath('/admin/banners');
+    return { success: true, data: banner };
   } catch (error) {
-    return { success: false, error: 'Error al obtener banners' };
+    console.error('Error updateBanner:', error);
+    return { success: false, error: 'Error al actualizar el banner.' };
   }
 }
 
-// Eliminar un banner
 export async function deleteBanner(id: string) {
   try {
     await prisma.banner.delete({ where: { id } });
     revalidatePath('/');
+    revalidatePath('/admin/banners');
     return { success: true };
   } catch (error) {
-    return { success: false, error: 'Error al eliminar' };
+    console.error('Error deleteBanner:', error);
+    return { success: false, error: 'Error al eliminar el banner.' };
+  }
+}
+
+export async function getAdminBanners() {
+  try {
+    const banners = await prisma.banner.findMany({
+      orderBy: { order: 'asc' }, // Ordenamos por el campo 'order'
+    });
+    return { success: true, data: banners };
+  } catch (error) {
+    console.error('Error getAdminBanners:', error);
+    return { success: false, error: 'Error al obtener banners.' };
+  }
+}
+
+export async function reorderBanners(items: { id: string; order: number }[]) {
+  try {
+    // Transacción para asegurar integridad
+    await prisma.$transaction(
+      items.map((item) =>
+        prisma.banner.update({
+          where: { id: item.id },
+          data: { order: item.order },
+        })
+      )
+    );
+    revalidatePath('/');
+    revalidatePath('/admin/banners');
+    return { success: true };
+  } catch (error) {
+    console.error('Error reorderBanners:', error);
+    return { success: false, error: 'Error al reordenar.' };
   }
 }
